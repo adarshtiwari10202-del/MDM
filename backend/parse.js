@@ -100,7 +100,7 @@ export function parseDailyRow(row, cols, opts = {}) {
     school: {
       udise,
       name: String(get('school') || baseline.name || '').trim(),
-      block: baseline.block || 'Khairabad',
+      block: baseline.block || 'Hargaon',
       location: baseline.location || null,
       baseline,
     },

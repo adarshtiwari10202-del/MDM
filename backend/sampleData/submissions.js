@@ -8,20 +8,20 @@
 const SCHOOLS = {
   '09250100101': {
     udise: '09250100101',
-    name: 'PS Khairabad Purab',
-    block: 'Khairabad',
+    name: 'PS Hargaon Purab',
+    block: 'Hargaon',
     location: { lat: 27.5325, lng: 80.7561 },
   },
   '09250100205': {
     udise: '09250100205',
     name: 'PS Ataria',
-    block: 'Khairabad',
+    block: 'Hargaon',
     location: { lat: 27.6012, lng: 80.7788 },
   },
   '09250100309': {
     udise: '09250100309',
     name: 'UPS Laharpur Road',
-    block: 'Khairabad',
+    block: 'Hargaon',
     location: { lat: 27.5540, lng: 80.7402 },
   },
 };

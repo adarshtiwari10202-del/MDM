@@ -30,27 +30,26 @@ docs/
 |---|---|---|
 | 0 | GCP service account + share Sheets/Drive | ✅ done (project mdm-pilot-508522) |
 | 1 | Read daily Sheet + fetch Drive files | ✅ parser tested on real row; live layer built (needs key at deploy) |
-| 2 | AI analysis (image/video → JSON) | ✅ built (run with your Gemini key) |
-| 3 | Flag rules + results store | ✅ engine built & tested; store needs Phase 0 |
-| 4 | Reviewer dashboard | ✅ built (preview on sample data) |
-| 5 | Vercel Cron automation + daily digest | ⬜ |
-| 6 | Baseline context, dup hashing, peer compare | ◐ dup/geo logic in engine |
+| 2 | AI analysis (image/video → JSON, +GPS/time stamp read) | ✅ built |
+| 3 | Flag rules + pipeline (process one/all) | ✅ built & tested; write-back store pending |
+| 4 | Reviewer dashboard (+ /api/results) | ✅ built; deploys to Vercel |
+| 5 | Vercel Cron automation + daily digest | ⬜ next |
+| 6 | Baseline context, dup hashing, peer compare | ◐ dup-hash + geo in pipeline |
 
 Everything runs today against `backend/sampleData/` with `DATA_MODE=sample`. When
 Phase 0 is done, set `DATA_MODE=live` and fill the IDs in `.env` — the flag engine
 and dashboard are unchanged; only the data source swaps.
 
-### Open gaps found while mapping the live forms
-- **No "today's menu" source.** Neither form captures the prescribed menu, so
-  `menu_missing` cannot fire until the block weekly menu is filled in
-  `backend/menu.js` (`WEEKLY_MENU`). This is the flagship AI check — needs the
-  Khairabad Mon–Sat rotation.
-- **No geo-location captured.** Forms strip photo GPS and there is no location
-  question, so `geo_mismatch` is inert for now (deferred; add a location question
-  later if wanted).
-- **No per-file upload times.** Forms give one row timestamp only, so the
-  staged-burst check has nothing to compare within a submission (meal-window
-  check still works off the row timestamp).
+### Notes on the live forms
+- **Menu:** filled from the official PM POSHAN weekly rotation in
+  `backend/menu.js` (`WEEKLY_MENU`). Supports Friday's tehri/khichdi alternative
+  and dish categories (a banana satisfies "fruit").
+- **Geo + time come from the photo stamp.** Submissions are GPS-Map-Camera
+  stamped, so the AI reads `gps_lat/gps_lng` and `stamp_datetime` off each image;
+  the pipeline merges those into the flag inputs. This powers the meal-window,
+  staged-burst, and geo-consistency checks. Absolute geo-match to the school
+  needs a school→lat/lng registry (`school.location`); until populated, the
+  co-location check (`geo_inconsistent`) still runs on the four stamped photos.
 
 ## Run
 ```bash

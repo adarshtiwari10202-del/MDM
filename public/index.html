@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>MDM Monitoring — Khairabad</title>
+<title>MDM Monitoring — Hargaon</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -110,7 +110,7 @@
     <div class="row">
       <div>
         <h1>Mid-Day Meal Monitoring</h1>
-        <div class="sub">Khairabad Block · Sitapur · Nipun Bharat</div>
+        <div class="sub">Hargaon Block · Sitapur · Nipun Bharat</div>
       </div>
       <div class="meta">
         <div id="dateline">—</div>
@@ -159,7 +159,7 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
     "school": {
       "udise": "09250100309",
       "name": "UPS Laharpur Road",
-      "block": "Khairabad",
+      "block": "Hargaon",
       "location": {
         "lat": 27.554,
         "lng": 80.7402
@@ -290,7 +290,7 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
     "school": {
       "udise": "09250100205",
       "name": "PS Ataria",
-      "block": "Khairabad",
+      "block": "Hargaon",
       "location": {
         "lat": 27.6012,
         "lng": 80.7788
@@ -398,8 +398,8 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
     "id": "S-0004",
     "school": {
       "udise": "09250100101",
-      "name": "PS Khairabad Purab",
-      "block": "Khairabad",
+      "name": "PS Hargaon Purab",
+      "block": "Hargaon",
       "location": {
         "lat": 27.5325,
         "lng": 80.7561
@@ -485,8 +485,8 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
     "id": "S-0001",
     "school": {
       "udise": "09250100101",
-      "name": "PS Khairabad Purab",
-      "block": "Khairabad",
+      "name": "PS Hargaon Purab",
+      "block": "Hargaon",
       "location": {
         "lat": 27.5325,
         "lng": 80.7561
@@ -588,7 +588,15 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
   }
 ];
 
-async function loadData(){ return MOCK_DATA; }
+async function loadData(){
+  // Deployed: read the live API. Offline/preview: fall back to embedded sample.
+  try{
+    const r = await fetch('/api/results');
+    if(r.ok){ const j = await r.json(); const rows = Array.isArray(j) ? j : j.rows;
+      if(Array.isArray(rows) && rows.length){ if(j.mode) window.__MDM_MODE = j.mode; return rows; } }
+  }catch(e){ /* file:// or API down → sample */ }
+  return MOCK_DATA;
+}
 
 const FLAG_STORE_KEY = 'mdm_verdicts_v1';
 function loadVerdicts(){ try{return JSON.parse(localStorage.getItem(FLAG_STORE_KEY))||{}}catch(e){return{}} }
@@ -698,7 +706,7 @@ function render(){
       <div class="chead" data-toggle="${row.id}">
         <div class="who">
           <div class="name">${row.school.name}</div>
-          <div class="meta">UDISE ${row.school.udise} · ${row.date} · ${fmtTime(row.submittedAt)} · menu: ${row.menu.join(', ')}</div>
+          <div class="meta">UDISE ${row.school.udise} · ${row.date} · ${fmtTime(row.submittedAt)} · menu: ${row.menuLabel || (Array.isArray(row.menu)?row.menu.join(', '):'')}</div>
         </div>
         ${severityChip(row)}
         <span class="caret">▶</span>
@@ -745,6 +753,10 @@ document.getElementById('filters').addEventListener('click',(e)=>{
 
 (async function init(){
   ROWS=await loadData();
+  if(window.__MDM_MODE==='live'){
+    document.getElementById('mockBanner').textContent =
+      'Live data — reading real submissions. Reviewer verdicts here are stored per-browser until the write-back store is enabled.';
+  }
   const d = ROWS[0]?.date || new Date().toISOString().slice(0,10);
   document.getElementById('dateline').textContent = new Date(d).toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   render();

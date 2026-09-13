@@ -8,6 +8,7 @@
 // This engine only surfaces FLAGS for a human reviewer to judge.
 // Nothing here writes a verdict — reviewer_verdict stays null.
 // ============================================================
+import { DISH_CATEGORIES } from './menu.js';
 
 /** Severity ranks. Higher = worse. Used to compute overall severity + score. */
 export const SEVERITY = { ok: 0, info: 1, amber: 2, red: 3 };
@@ -86,7 +87,7 @@ export function evaluateSubmission(submission, config = {}) {
   const flags = [];
   const files = submission.files || {};
   const school = submission.school || {};
-  const menu = (submission.menu || []).map(normDish);
+  const menu = submission.menu || []; // structured requirements (string | {anyOf})
 
   // --- Rule check 1: completeness (all four items received) ---
   const missing = cfg.requiredItems.filter((k) => !files[k] || files[k].missing);
@@ -136,11 +137,14 @@ export function evaluateSubmission(submission, config = {}) {
     }
   }
 
-  // --- Rule check 4: geo match to school ---
+  // --- Rule check 4a: geo match to known school location ---
+  // Locations come from the GPS stamp the AI reads off each photo, merged
+  // into files[k].location by the pipeline. school.location comes from the
+  // school registry (backend/schools.js) once known.
   if (school.location) {
     for (const k of cfg.requiredItems) {
       const loc = files[k]?.location;
-      if (!loc) continue; // geo not always available; only flag actual mismatches
+      if (!loc) continue; // only flag actual mismatches
       const dist = metersBetween(loc, school.location);
       if (dist != null && dist > cfg.geoRadiusMeters) {
         flags.push(
@@ -152,6 +156,32 @@ export function evaluateSubmission(submission, config = {}) {
           )
         );
       }
+    }
+  }
+
+  // --- Rule check 4b: geo consistency (all photos at the same place) ---
+  // Works even without a known school location: the four stamped photos of
+  // one meal should be co-located. A large spread suggests photos from
+  // different places stitched into one submission.
+  const geoPoints = cfg.requiredItems
+    .map((k) => files[k]?.location)
+    .filter((l) => l && l.lat != null);
+  if (geoPoints.length >= 2) {
+    let maxPair = 0;
+    for (let i = 0; i < geoPoints.length; i++) {
+      for (let j = i + 1; j < geoPoints.length; j++) {
+        maxPair = Math.max(maxPair, metersBetween(geoPoints[i], geoPoints[j]) || 0);
+      }
+    }
+    if (maxPair > cfg.geoRadiusMeters) {
+      flags.push(
+        flag(
+          'geo_inconsistent',
+          'red',
+          `Photos taken up to ${Math.round(maxPair)}m apart — not one location`,
+          'rule'
+        )
+      );
     }
   }
 
@@ -183,8 +213,20 @@ export function evaluateSubmission(submission, config = {}) {
       }
     }
   }
+  // A dish counts as seen if it (or a category member) appears.
+  const dishSeen = (nd) => {
+    if (seen.has(nd)) return true;
+    const cats = DISH_CATEGORIES[nd];
+    return !!(cats && cats.some((m) => seen.has(m)));
+  };
+  const itemPresent = (item) => {
+    if (typeof item === 'string') return dishSeen(normDish(item));
+    if (item && item.anyOf) return item.anyOf.some((x) => dishSeen(normDish(x)));
+    return true;
+  };
+  const itemLabel = (item) => (typeof item === 'string' ? item : (item.anyOf || []).join('/'));
   if (menu.length) {
-    const missingMenu = menu.filter((m) => !seen.has(m));
+    const missingMenu = menu.filter((it) => !itemPresent(it)).map(itemLabel);
     if (missingMenu.length) {
       flags.push(
         flag(

@@ -35,5 +35,37 @@ check('S-0004 severity red (incomplete)', r4.severity === 'red');
 check('clean submission scores 0', r1.score === 0);
 check('flagged submissions outrank clean', r2.score > r1.score && r3.score > r1.score);
 
+// --- menu alternatives, categories, geo consistency (new logic) ---
+const mkFiles = (cookedAi, extra = {}) => ({
+  cooking: { ai: { scene_type: 'cooking', cooking_in_progress: true } },
+  cooked_meal: { ai: { scene_type: 'cooked_meal_in_vessel', food_present: true, ...cookedAi } },
+  serving_video: { ai: { scene_type: 'serving', food_present: true } },
+  children: { ai: { scene_type: 'children_eating', children_eating: true } },
+  ...extra,
+});
+const base = (menu, files) => ({ school: { udise: 'x' }, date: '2026-09-13', menu, files });
+
+// Friday-style alternative satisfied by khichdi
+const alt1 = evaluateSubmission(base([{ anyOf: ['tehri', 'khichdi'] }, 'sabzi'],
+  mkFiles({ dishes_visible: ['khichdi', 'sabzi'] })));
+check('anyOf satisfied by khichdi → no menu_missing', !codes(alt1).includes('menu_missing'));
+
+// Alternative NOT satisfied
+const alt2 = evaluateSubmission(base([{ anyOf: ['tehri', 'khichdi'] }],
+  mkFiles({ dishes_visible: ['rice'] })));
+check('anyOf unmet → menu_missing tehri/khichdi', codes(alt2).includes('menu_missing') &&
+  alt2.flags.find((f) => f.code === 'menu_missing').message.includes('tehri/khichdi'));
+
+// Category: banana satisfies "fruit"
+const cat = evaluateSubmission(base(['fruit'], mkFiles({ dishes_visible: ['banana'] })));
+check('banana satisfies fruit category', !codes(cat).includes('menu_missing'));
+
+// Geo consistency: two photos 500m+ apart
+const geo = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['rice'] }, {
+  cooking: { location: { lat: 27.5, lng: 80.7 }, ai: {} },
+  cooked_meal: { location: { lat: 27.51, lng: 80.71 }, ai: { food_present: true, dishes_visible: ['rice'] } },
+})));
+check('photos far apart → geo_inconsistent', codes(geo).includes('geo_inconsistent'));
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
