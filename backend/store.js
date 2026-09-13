@@ -111,6 +111,14 @@ export async function readResults({ date } = {}) {
   return date ? rows.filter((r) => r.date === date) : rows;
 }
 
+/** Clear all rows (keep nothing) — used by force reprocess. Re-adds header. */
+export async function clearResults() {
+  const sheets = await sheetsClient();
+  const tab = await tabName(sheets);
+  await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET(), range: `${tab}` });
+  await ensureHeader();
+}
+
 /** Set of submission ids already in the store. */
 export async function getProcessedIds() {
   const sheets = await sheetsClient();

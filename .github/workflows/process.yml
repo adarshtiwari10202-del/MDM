@@ -3,7 +3,12 @@ name: Nightly MDM processing
 on:
   schedule:
     - cron: '30 14 * * *'   # 20:00 IST (14:30 UTC) daily
-  workflow_dispatch: {}       # allow manual "Run workflow" for on-demand processing
+  workflow_dispatch:          # allow manual "Run workflow" for on-demand processing
+    inputs:
+      force:
+        description: 'Reprocess all rows (clear store first)'
+        type: boolean
+        default: false
 
 jobs:
   process:
@@ -24,8 +29,9 @@ jobs:
       - name: Run processor
         env:
           DATA_MODE: live
+          FORCE: ${{ inputs.force }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-2.5-flash
+          GEMINI_MODEL: gemini-3.6-flash
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
           BASELINE_SHEET_ID: ${{ secrets.BASELINE_SHEET_ID }}

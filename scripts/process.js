@@ -13,15 +13,17 @@
 import { config } from '../backend/config.js';
 import { getDailySubmissions } from '../backend/source.js';
 import { processAll } from '../backend/pipeline.js';
-import { getProcessedIds, loadSeenHashes, appendResults, ensureHeader } from '../backend/store.js';
+import { getProcessedIds, loadSeenHashes, appendResults, ensureHeader, clearResults } from '../backend/store.js';
 
 async function main() {
   const live = config.dataMode === 'live';
-  console.log(`[process] mode=${config.dataMode}`);
+  const force = process.env.FORCE === '1' || process.env.FORCE === 'true' || process.argv.includes('--force');
+  console.log(`[process] mode=${config.dataMode}${force ? ' (force: reprocess all)' : ''}`);
   if (!live) {
     console.log('[process] DATA_MODE is not live — refusing to run against sample data. Set DATA_MODE=live.');
     process.exit(0);
   }
+  if (force) { console.log('[process] clearing store for full reprocess'); await clearResults(); }
   await ensureHeader();
   const [subs, processedIds, seenHashes] = await Promise.all([
     getDailySubmissions(),
