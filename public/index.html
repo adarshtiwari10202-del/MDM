@@ -634,10 +634,13 @@ function mediaStrip(row){
     const f=row.files[k]||{};
     if(f.missing) return `<div class="thumb"><span class="tl">${ITEM_LABELS[k]}</span><div class="ph" style="color:var(--red)">Not submitted</div></div>`;
     const scene=(f.ai&&f.ai.scene_type)?f.ai.scene_type.replace(/_/g,' '):'';
-    // Preview has no real image bytes; show a labeled placeholder. Live build sets background-image to the media URL.
-    return `<div class="thumb" ${f.previewUrl?`style="background-image:url('${f.previewUrl}')"`:''}>
-      <span class="tl">${ITEM_LABELS[k]}</span>
-      ${f.previewUrl?'':`<div class="ph">${scene||'media'}</div>`}</div>`;
+    // Live: stream real media via the proxy. Preview: labeled placeholder.
+    const src = f.fileId ? `/api/media?fileId=${encodeURIComponent(f.fileId)}` : (f.previewUrl||null);
+    let inner;
+    if(!src){ inner = `<div class="ph">${scene||'media'}</div>`; }
+    else if(k==='serving_video'){ inner = `<video src="${src}" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;background:#000"></video>`; }
+    else { inner = `<img src="${src}" loading="lazy" alt="${ITEM_LABELS[k]}" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'image unavailable'}))">`; }
+    return `<div class="thumb"><span class="tl">${ITEM_LABELS[k]}</span>${inner}</div>`;
   }).join('')+`</div>`;
 }
 

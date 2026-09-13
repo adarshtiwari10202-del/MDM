@@ -103,3 +103,14 @@ export async function fetchDriveFile(fileId) {
   );
   return Buffer.from(res.data);
 }
+
+/** Download a Drive file with its content-type (for the media proxy). */
+export async function fetchDriveMedia(fileId) {
+  const { drive } = await getClients();
+  const res = await drive.files.get(
+    { fileId, alt: 'media', supportsAllDrives: true },
+    { responseType: 'arraybuffer' }
+  );
+  const mimeType = res.headers?.['content-type'] || 'application/octet-stream';
+  return { buffer: Buffer.from(res.data), mimeType };
+}
