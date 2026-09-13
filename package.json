@@ -1,0 +1,15 @@
+{
+  "name": "mdm-pilot",
+  "version": "0.1.0",
+  "description": "AI-assisted monitoring pipeline for the Mid-Day Meal programme, Khairabad block, Sitapur (CSF / DPMU Nipun Bharat pilot).",
+  "type": "module",
+  "scripts": {
+    "test:flags": "node backend/tests/flagRules.test.js",
+    "test": "npm run test:flags"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

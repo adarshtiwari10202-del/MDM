@@ -1,0 +1,30 @@
+# --- Secrets: NEVER commit these ---
+.env
+.env.*
+!.env.example
+*.json.key
+service-account*.json
+*-service-account.json
+credentials*.json
+gcp-key*.json
+keys/
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Build / cache ---
+dist/
+.cache/
+.vercel/
+
+# --- Media scratch (downloaded submissions, downscaled video) ---
+tmp/
+scratch/
+*.tmp
+
+# --- OS ---
+.DS_Store
+Thumbs.db
