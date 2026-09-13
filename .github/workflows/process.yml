@@ -1,0 +1,37 @@
+name: Nightly MDM processing
+
+on:
+  schedule:
+    - cron: '30 14 * * *'   # 20:00 IST (14:30 UTC) daily
+  workflow_dispatch: {}       # allow manual "Run workflow" for on-demand processing
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install ffmpeg (for video downscaling)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run processor
+        env:
+          DATA_MODE: live
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
+          BASELINE_SHEET_ID: ${{ secrets.BASELINE_SHEET_ID }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          DAILY_SHEET_TAB: Form Responses 1
+          BASELINE_SHEET_TAB: Form Responses 1
+          RESULTS_SHEET_TAB: Results
+        run: node scripts/process.js

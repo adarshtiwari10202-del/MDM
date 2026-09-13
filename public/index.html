@@ -736,12 +736,20 @@ document.addEventListener('click',(e)=>{
     const comment=card.querySelector(`[data-comment="${id}"]`).value;
     const verdict=sel?sel.dataset.verdict:null;
     const at=new Date().toISOString();
-    saveVerdict(id,{verdict,comment,at});
-    document.getElementById('status-'+id).textContent = verdict? ('Saved '+fmtTime(at)) : 'Pick a verdict first';
+    if(!verdict){ document.getElementById('status-'+id).textContent='Pick a verdict first'; return; }
+    saveVerdict(id,{verdict,comment,at});           // optimistic (per-browser)
+    const statusEl=document.getElementById('status-'+id);
+    statusEl.textContent='Saved '+fmtTime(at);
     renderKpis();
-    // update chip + card tone without collapsing
     const row=ROWS.find(r=>r.id===id);
     card.querySelector('.chead .chip').outerHTML=severityChip(row);
+    if(window.__MDM_MODE==='live'){                  // persist to the store
+      statusEl.textContent='Saving…';
+      fetch('/api/verdict',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id,verdict,comment})})
+        .then(r=>r.json()).then(j=>{ statusEl.textContent = j.ok? ('Saved '+fmtTime(at)) : ('Save failed: '+(j.error||'')); })
+        .catch(err=>{ statusEl.textContent='Saved locally (store unreachable)'; });
+    }
     return;
   }
 });

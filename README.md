@@ -33,7 +33,7 @@ docs/
 | 2 | AI analysis (image/video → JSON, +GPS/time stamp read) | ✅ built |
 | 3 | Flag rules + pipeline (process one/all) | ✅ built & tested; write-back store pending |
 | 4 | Reviewer dashboard (+ /api/results) | ✅ built; deploys to Vercel |
-| 5 | Vercel Cron automation + daily digest | ⬜ next |
+| 5 | Nightly processing (GitHub Action) + store | ✅ built (see docs/GO-LIVE.md); daily digest ⬜ |
 | 6 | Baseline context, dup hashing, peer compare | ◐ dup-hash + geo in pipeline |
 
 Everything runs today against `backend/sampleData/` with `DATA_MODE=sample`. When
