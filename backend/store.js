@@ -36,15 +36,33 @@ async function sheetsClient() {
 const SHEET = () => config.ids.resultsSheet;
 const TAB = () => config.ids.resultsTab || 'Results';
 
+// The results sheet's actual tab may be the auto-created "Sheet1" rather than
+// the configured "Results". Resolve (and cache) the real tab title once so all
+// ranges are valid regardless of what the tab is actually called.
+let _tab = null;
+async function tabName(sheets) {
+  if (_tab) return _tab;
+  const configured = TAB();
+  try {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET() });
+    const titles = (meta.data.sheets || []).map((s) => s.properties.title);
+    _tab = titles.includes(configured) ? configured : (titles[0] || configured);
+  } catch {
+    _tab = configured;
+  }
+  return _tab;
+}
+
 /** Ensure the header row exists (idempotent). */
 export async function ensureHeader() {
   const sheets = await sheetsClient();
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET(), range: `${TAB()}!1:1` });
+  const tab = await tabName(sheets);
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET(), range: `${tab}!1:1` });
   const have = (res.data.values && res.data.values[0]) || [];
   if (have.length < COLUMNS.length) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET(),
-      range: `${TAB()}!A1`,
+      range: `${tab}!A1`,
       valueInputOption: 'RAW',
       requestBody: { values: [COLUMNS] },
     });
@@ -84,7 +102,8 @@ function rowToResult(row, headers) {
 /** Read all stored result rows (optionally filter by date). */
 export async function readResults({ date } = {}) {
   const sheets = await sheetsClient();
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET(), range: `${TAB()}` });
+  const tab = await tabName(sheets);
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET(), range: `${tab}` });
   const values = res.data.values || [];
   if (values.length < 2) return [];
   const headers = values[0];
@@ -95,7 +114,8 @@ export async function readResults({ date } = {}) {
 /** Set of submission ids already in the store. */
 export async function getProcessedIds() {
   const sheets = await sheetsClient();
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET(), range: `${TAB()}!A2:A` });
+  const tab = await tabName(sheets);
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET(), range: `${tab}!A2:A` });
   return new Set((res.data.values || []).map((r) => r[0]).filter(Boolean));
 }
 
@@ -117,9 +137,10 @@ export async function appendResults(results) {
   if (!results.length) return { added: 0 };
   await ensureHeader();
   const sheets = await sheetsClient();
+  const tab = await tabName(sheets);
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET(),
-    range: `${TAB()}!A1`,
+    range: `${tab}!A1`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: results.map(resultToRow) },
@@ -130,7 +151,8 @@ export async function appendResults(results) {
 /** Save a reviewer verdict onto an existing row (by id). */
 export async function setVerdict(id, { verdict, comment }) {
   const sheets = await sheetsClient();
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET(), range: `${TAB()}` });
+  const tab = await tabName(sheets);
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET(), range: `${tab}` });
   const values = res.data.values || [];
   const headers = values[0] || COLUMNS;
   const idCol = headers.indexOf('id');
@@ -142,7 +164,7 @@ export async function setVerdict(id, { verdict, comment }) {
   const a1col = (n) => String.fromCharCode(65 + n); // fine: columns < 26
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET(),
-    range: `${TAB()}!${a1col(vCol)}${rowIdx + 1}:${a1col(vCol + 2)}${rowIdx + 1}`,
+    range: `${tab}!${a1col(vCol)}${rowIdx + 1}:${a1col(vCol + 2)}${rowIdx + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [[verdict || '', comment || '', at]] },
   });
