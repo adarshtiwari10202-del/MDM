@@ -5,7 +5,14 @@
   "type": "module",
   "scripts": {
     "test:flags": "node backend/tests/flagRules.test.js",
-    "test": "npm run test:flags"
+    "test:parse": "node backend/tests/parse.test.js",
+    "test": "npm run test:flags && npm run test:parse"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.33.5"
   },
   "engines": {
     "node": ">=18"

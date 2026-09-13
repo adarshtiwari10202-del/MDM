@@ -28,8 +28,8 @@ docs/
 ## Build status
 | Phase | What | Status |
 |---|---|---|
-| 0 | GCP service account + share Sheets/Drive | ⏳ user (see docs/PHASE0-SETUP.md) |
-| 1 | Read daily Sheet + fetch Drive files | ⬜ needs Phase 0 |
+| 0 | GCP service account + share Sheets/Drive | ✅ done (project mdm-pilot-508522) |
+| 1 | Read daily Sheet + fetch Drive files | ✅ parser tested on real row; live layer built (needs key at deploy) |
 | 2 | AI analysis (image/video → JSON) | ✅ built (run with your Gemini key) |
 | 3 | Flag rules + results store | ✅ engine built & tested; store needs Phase 0 |
 | 4 | Reviewer dashboard | ✅ built (preview on sample data) |
@@ -39,6 +39,18 @@ docs/
 Everything runs today against `backend/sampleData/` with `DATA_MODE=sample`. When
 Phase 0 is done, set `DATA_MODE=live` and fill the IDs in `.env` — the flag engine
 and dashboard are unchanged; only the data source swaps.
+
+### Open gaps found while mapping the live forms
+- **No "today's menu" source.** Neither form captures the prescribed menu, so
+  `menu_missing` cannot fire until the block weekly menu is filled in
+  `backend/menu.js` (`WEEKLY_MENU`). This is the flagship AI check — needs the
+  Khairabad Mon–Sat rotation.
+- **No geo-location captured.** Forms strip photo GPS and there is no location
+  question, so `geo_mismatch` is inert for now (deferred; add a location question
+  later if wanted).
+- **No per-file upload times.** Forms give one row timestamp only, so the
+  staged-burst check has nothing to compare within a submission (meal-window
+  check still works off the row timestamp).
 
 ## Run
 ```bash
