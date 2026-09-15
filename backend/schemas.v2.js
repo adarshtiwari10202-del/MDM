@@ -29,7 +29,6 @@ const COMMON = {
   scene_matches_expected: YN(),
   image_quality: S(['clear', 'slightly_blurry', 'too_blurry', 'too_dark', 'obstructed']),
   is_photo_of_a_screen: YN(),
-  face_clearly_visible: YN(),
   gps_present: S(['yes', 'no']),
   gps_lat: NUM_NULLABLE(),
   gps_lng: NUM_NULLABLE(),

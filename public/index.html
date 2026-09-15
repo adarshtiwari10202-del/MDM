@@ -153,7 +153,7 @@
 //     const r = await fetch('/api/results?date=' + today); return r.json();
 // The card/render code is identical for both.
 // ============================================================
-const MOCK_DATA = /*__MOCK_DATA__*/[
+const MOCK_DATA = [
   {
     "id": "S-0003",
     "school": {
@@ -186,8 +186,8 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
           "food_present": null,
           "dishes_visible": [],
           "menu_items_present": {},
-          "children_eating": null,
           "cooking_in_progress": true,
+          "plate_fullness": null,
           "notes": ""
         }
       },
@@ -210,8 +210,8 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
             "tehri": true,
             "kadhi": true
           },
-          "children_eating": null,
           "cooking_in_progress": null,
+          "plate_fullness": null,
           "notes": ""
         }
       },
@@ -224,23 +224,26 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
           "food_present": true,
           "dishes_visible": [],
           "menu_items_present": {},
-          "children_eating": null,
           "cooking_in_progress": null,
+          "plate_fullness": null,
           "notes": ""
         }
       },
-      "children": {
-        "url": "sample://kids-3.jpg",
+      "plate": {
+        "url": "sample://plate-3.jpg",
         "uploadedAt": "2026-09-13T09:50:50+05:30",
         "hash": "c4",
         "duplicateOf": "S-0003 (2026-09-11)",
         "ai": {
-          "scene_type": "children_eating",
-          "food_present": null,
-          "dishes_visible": [],
+          "scene_type": "served_plate",
+          "food_present": true,
+          "dishes_visible": [
+            "tehri",
+            "kadhi"
+          ],
           "menu_items_present": {},
-          "children_eating": true,
           "cooking_in_progress": null,
+          "plate_fullness": "adequate",
           "notes": ""
         }
       }
@@ -273,7 +276,7 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
       {
         "code": "duplicate_media",
         "severity": "red",
-        "message": "children is a duplicate of submission S-0003 (2026-09-11)",
+        "message": "plate is a duplicate of submission S-0003 (2026-09-11)",
         "stage": "rule"
       }
     ],
@@ -281,9 +284,11 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
     "severityRank": 3,
     "score": 320,
     "summary": "3 red, 2 amber",
+    "menuLabel": "tehri, kadhi",
     "reviewer_verdict": null,
     "reviewer_comment": "",
-    "reviewer_at": null
+    "reviewer_at": null,
+    "processedAt": "2026-09-15T03:40:44.752Z"
   },
   {
     "id": "S-0002",
@@ -314,8 +319,8 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
           "food_present": true,
           "dishes_visible": [],
           "menu_items_present": {},
-          "children_eating": null,
           "cooking_in_progress": true,
+          "plate_fullness": null,
           "notes": ""
         }
       },
@@ -335,8 +340,8 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
             "dal": true,
             "sabzi": false
           },
-          "children_eating": null,
           "cooking_in_progress": null,
+          "plate_fullness": null,
           "notes": "Only rice and dal visible."
         }
       },
@@ -352,23 +357,30 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
             "dal"
           ],
           "menu_items_present": {},
-          "children_eating": null,
           "cooking_in_progress": null,
+          "plate_fullness": null,
           "notes": ""
         }
       },
-      "children": {
-        "url": "sample://kids-2.jpg",
+      "plate": {
+        "url": "sample://plate-2.jpg",
         "uploadedAt": "2026-09-13T11:40:00+05:30",
         "hash": "b4",
         "ai": {
-          "scene_type": "other",
-          "food_present": null,
-          "dishes_visible": [],
-          "menu_items_present": {},
-          "children_eating": false,
+          "scene_type": "served_plate",
+          "food_present": true,
+          "dishes_visible": [
+            "rice",
+            "dal"
+          ],
+          "menu_items_present": {
+            "rice": true,
+            "dal": true,
+            "sabzi": false
+          },
           "cooking_in_progress": null,
-          "notes": "Empty dining area, no children present."
+          "plate_fullness": "sparse",
+          "notes": "Rice and dal only, thin covering."
         }
       }
     },
@@ -378,21 +390,17 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
         "severity": "red",
         "message": "Prescribed dish not visible: sabzi",
         "stage": "ai"
-      },
-      {
-        "code": "no_children_eating",
-        "severity": "amber",
-        "message": "Children not visibly eating in wide photo",
-        "stage": "ai"
       }
     ],
     "severity": "red",
     "severityRank": 3,
-    "score": 110,
-    "summary": "1 red, 1 amber",
+    "score": 100,
+    "summary": "1 red, 0 amber",
+    "menuLabel": "rice, dal, sabzi",
     "reviewer_verdict": null,
     "reviewer_comment": "",
-    "reviewer_at": null
+    "reviewer_at": null,
+    "processedAt": "2026-09-15T03:40:44.752Z"
   },
   {
     "id": "S-0004",
@@ -422,8 +430,8 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
           "food_present": null,
           "dishes_visible": [],
           "menu_items_present": {},
-          "children_eating": null,
           "cooking_in_progress": true,
+          "plate_fullness": null,
           "notes": ""
         }
       },
@@ -442,25 +450,31 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
             "roti": true,
             "sabzi": true
           },
-          "children_eating": null,
           "cooking_in_progress": null,
+          "plate_fullness": null,
           "notes": ""
         }
       },
       "serving_video": {
         "missing": true
       },
-      "children": {
-        "url": "sample://kids-4.jpg",
+      "plate": {
+        "url": "sample://plate-4.jpg",
         "uploadedAt": "2026-09-12T11:25:00+05:30",
         "hash": "d4",
         "ai": {
-          "scene_type": "children_eating",
-          "food_present": null,
-          "dishes_visible": [],
-          "menu_items_present": {},
-          "children_eating": true,
+          "scene_type": "served_plate",
+          "food_present": true,
+          "dishes_visible": [
+            "roti",
+            "sabzi"
+          ],
+          "menu_items_present": {
+            "roti": true,
+            "sabzi": true
+          },
           "cooking_in_progress": null,
+          "plate_fullness": "adequate",
           "notes": ""
         }
       }
@@ -477,9 +491,11 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
     "severityRank": 3,
     "score": 100,
     "summary": "1 red, 0 amber",
+    "menuLabel": "roti, sabzi",
     "reviewer_verdict": null,
     "reviewer_comment": "",
-    "reviewer_at": null
+    "reviewer_at": null,
+    "processedAt": "2026-09-15T03:40:44.753Z"
   },
   {
     "id": "S-0001",
@@ -514,8 +530,8 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
           "food_present": true,
           "dishes_visible": [],
           "menu_items_present": {},
-          "children_eating": null,
           "cooking_in_progress": true,
+          "plate_fullness": null,
           "notes": "Cook stirring a large vessel over flame."
         }
       },
@@ -540,8 +556,8 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
             "dal": true,
             "sabzi": true
           },
-          "children_eating": null,
           "cooking_in_progress": null,
+          "plate_fullness": null,
           "notes": "Three dishes in separate vessels."
         }
       },
@@ -557,23 +573,31 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
             "dal"
           ],
           "menu_items_present": {},
-          "children_eating": null,
           "cooking_in_progress": null,
+          "plate_fullness": null,
           "notes": "Server ladles rice and dal onto plate."
         }
       },
-      "children": {
-        "url": "sample://kids-1.jpg",
+      "plate": {
+        "url": "sample://plate-1.jpg",
         "uploadedAt": "2026-09-13T11:20:00+05:30",
         "hash": "a4",
         "ai": {
-          "scene_type": "children_eating",
+          "scene_type": "served_plate",
           "food_present": true,
-          "dishes_visible": [],
-          "menu_items_present": {},
-          "children_eating": true,
+          "dishes_visible": [
+            "rice",
+            "dal",
+            "sabzi"
+          ],
+          "menu_items_present": {
+            "rice": true,
+            "dal": true,
+            "sabzi": true
+          },
           "cooking_in_progress": null,
-          "notes": "Wide shot of children seated eating."
+          "plate_fullness": "adequate",
+          "notes": "Full plate with rice, dal and sabzi."
         }
       }
     },
@@ -582,9 +606,11 @@ const MOCK_DATA = /*__MOCK_DATA__*/[
     "severityRank": 0,
     "score": 0,
     "summary": "No automated flags",
+    "menuLabel": "rice, dal, sabzi",
     "reviewer_verdict": null,
     "reviewer_comment": "",
-    "reviewer_at": null
+    "reviewer_at": null,
+    "processedAt": "2026-09-15T03:40:44.752Z"
   }
 ];
 
@@ -607,7 +633,8 @@ let ROWS=[], FILTER='all';
 function fmtTime(iso){ if(!iso) return '—';
   return new Date(iso).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
 
-const ITEM_LABELS={cooking:'Cooking',cooked_meal:'Cooked meal',serving_video:'Serving (video)',children:'Children eating'};
+const ITEM_LABELS={cooking:'Cooking',cooked_meal:'Cooked meal',serving_video:'Serving (video)',plate:'Plate'};
+const ITEM_KEYS=['cooking','cooked_meal','serving_video','plate'];
 
 function verdictOf(row){ const v=loadVerdicts()[row.id]; return v||{verdict:null,comment:'',at:null}; }
 
@@ -630,7 +657,7 @@ function renderKpis(){
 }
 
 function mediaStrip(row){
-  return `<div class="media">`+['cooking','cooked_meal','serving_video','children'].map(k=>{
+  return `<div class="media">`+ITEM_KEYS.map(k=>{
     const f=row.files[k]||{};
     if(f.missing) return `<div class="thumb"><span class="tl">${ITEM_LABELS[k]}</span><div class="ph" style="color:var(--red)">Not submitted</div></div>`;
     const scene=(f.ai&&f.ai.scene_type)?f.ai.scene_type.replace(/_/g,' '):'';
@@ -646,12 +673,12 @@ function mediaStrip(row){
 
 function aiPanel(row){
   const rows=[];
-  for(const k of ['cooking','cooked_meal','serving_video','children']){
+  for(const k of ITEM_KEYS){
     const ai=row.files[k]&&row.files[k].ai; if(!ai) continue;
     const bits=[];
     if(ai.dishes_visible&&ai.dishes_visible.length) bits.push('dishes: '+ai.dishes_visible.join(', '));
     if(ai.food_present!=null) bits.push('food '+(ai.food_present?'present':'absent'));
-    if(ai.children_eating!=null) bits.push('children '+(ai.children_eating?'eating':'not eating'));
+    if(ai.plate_fullness) bits.push('portion: '+ai.plate_fullness);
     if(ai.cooking_in_progress!=null) bits.push('cooking '+(ai.cooking_in_progress?'in progress':'not seen'));
     rows.push(`<div class="ailine"><b>${ITEM_LABELS[k]}:</b> ${bits.join(' · ')||'—'}${ai.notes?`<br><span style="color:var(--grey)">“${ai.notes}”</span>`:''}</div>`);
   }

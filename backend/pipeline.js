@@ -14,7 +14,44 @@ import { evaluateSubmission } from './flagRules.js';
 import { menuDishList } from './menu.js';
 import { config } from './config.js';
 
-const ITEMS = ['cooking', 'cooked_meal', 'serving_video', 'children'];
+// Daily items (form upload slots) and the AI stage each maps to.
+const ITEMS = ['cooking', 'cooked_meal', 'serving_video', 'plate'];
+const ITEM_STAGE = {
+  cooking: 'cooking',
+  cooked_meal: 'cooked_food',
+  serving_video: 'serving',
+  plate: 'plate',
+};
+
+// tri-state 'yes'|'no'|'unclear' -> true|false|null
+const yn = (x) => (x === 'yes' ? true : x === 'no' ? false : null);
+
+/**
+ * Adapter: the v2 per-scene reading is rich, but the current flag engine and
+ * dashboard read a small "legacy" field set. We keep the full v2 reading AND
+ * merge in these legacy fields so nothing downstream breaks. The flag-policy
+ * redesign will consume the rich v2 fields directly.
+ */
+function normalizeReading(stage, v2) {
+  if (!v2 || typeof v2 !== 'object') return v2;
+  const dishes = v2.dishes_visible || v2.dishes_on_plate || v2.dishes_served || v2.dishes_being_cooked || [];
+  const legacy = {
+    scene_type: v2.observed_scene,
+    dishes_visible: dishes,
+    food_present: v2.food_present !== undefined ? yn(v2.food_present) : null,
+    cooking_in_progress: v2.cooking_in_progress !== undefined ? yn(v2.cooking_in_progress) : null,
+    notes: v2.notes,
+  };
+  if (Array.isArray(v2.menu_items)) {
+    legacy.menu_items_present = {};
+    for (const mi of v2.menu_items) {
+      if (mi.status === 'present') legacy.menu_items_present[mi.item] = true;
+      else if (mi.status === 'absent') legacy.menu_items_present[mi.item] = false;
+      // 'unclear' is intentionally omitted so it never triggers a menu flag
+    }
+  }
+  return { ...v2, ...legacy };
+}
 
 /** Best-effort parse of a stamp date-time string into ISO (IST). */
 export function parseStampDateTime(s) {
@@ -39,8 +76,9 @@ function mergeStamp(file) {
   if (ai.gps_lat != null && ai.gps_lng != null && !file.location) {
     file.location = { lat: Number(ai.gps_lat), lng: Number(ai.gps_lng) };
   }
-  if (ai.stamp_datetime && !file.uploadedAt) {
-    const t = parseStampDateTime(ai.stamp_datetime);
+  const stampTime = ai.capture_datetime_text || ai.stamp_datetime; // v2 || legacy
+  if (stampTime && !file.uploadedAt) {
+    const t = parseStampDateTime(stampTime);
     if (t) file.uploadedAt = t;
   }
 }
@@ -67,12 +105,14 @@ export async function processSubmission(sub, ctx = {}) {
           if (ctx.seenHashes.has(f.hash)) f.duplicateOf = 'an earlier submission';
           else ctx.seenHashes.set(f.hash, sub.id);
         }
+        const stage = ITEM_STAGE[k];
         if (k === 'serving_video') {
           const tmp = path.join(os.tmpdir(), `mdm-${f.hash.slice(0, 12)}.mp4`);
           fs.writeFileSync(tmp, buf);
-          try { f.ai = await analyzeVideo(tmp, menu); } finally { fs.rmSync(tmp, { force: true }); }
+          try { f.ai = normalizeReading(stage, await analyzeVideo(tmp, { menuItems: menu })); }
+          finally { fs.rmSync(tmp, { force: true }); }
         } else {
-          f.ai = await analyzeImage(buf, menu);
+          f.ai = normalizeReading(stage, await analyzeImage(buf, { stage, menuItems: menu }));
         }
       } catch (e) {
         f.error = e.message; // keep going; a fetch/AI failure shouldn't drop the row

@@ -18,7 +18,6 @@ check('S-0001 severity ok', r1.severity === 'ok');
 
 const r2 = evaluateSubmission(byId('S-0002'));
 check('S-0002 flags missing menu item (sabzi)', codes(r2).includes('menu_missing'));
-check('S-0002 flags children not eating', codes(r2).includes('no_children_eating'));
 check('S-0002 severity red (menu_missing)', r2.severity === 'red');
 
 const r3 = evaluateSubmission(byId('S-0003'));
@@ -40,7 +39,7 @@ const mkFiles = (cookedAi, extra = {}) => ({
   cooking: { ai: { scene_type: 'cooking', cooking_in_progress: true } },
   cooked_meal: { ai: { scene_type: 'cooked_meal_in_vessel', food_present: true, ...cookedAi } },
   serving_video: { ai: { scene_type: 'serving', food_present: true } },
-  children: { ai: { scene_type: 'children_eating', children_eating: true } },
+  plate: { ai: { scene_type: 'served_plate', food_present: true } },
   ...extra,
 });
 const base = (menu, files) => ({ school: { udise: 'x' }, date: '2026-09-13', menu, files });

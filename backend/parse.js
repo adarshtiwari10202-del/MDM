@@ -18,7 +18,11 @@ const DAILY_COLS = {
   cooking: ['photo 1', 'food being cooked', 'cooking'],
   cooked_meal: ['photo 2', 'cooked meal', 'vessel'],
   serving_video: ['video'],
-  children: ['photo 3', 'children eating', 'wide angle'],
+  // The 4th slot is now the served-plate photo (children photo removed).
+  // Matches once the daily form's 4th upload is a "plate with all the food".
+  // Specific wording so it never collides with the video column
+  // ("...Serving onto a plate"). Matches the relabelled 4th upload.
+  plate: ['plate with', 'all the food', 'thali', 'सम्पूर्ण भोजन', 'भोजन की थाली'],
 };
 
 /** Resolve logical field -> actual header string present in the sheet. */
@@ -112,7 +116,7 @@ export function parseDailyRow(row, cols, opts = {}) {
       cooking: fileFromUrl(get('cooking')),
       cooked_meal: fileFromUrl(get('cooked_meal')),
       serving_video: fileFromUrl(get('serving_video')),
-      children: fileFromUrl(get('children')),
+      plate: fileFromUrl(get('plate')),
     },
   };
 }

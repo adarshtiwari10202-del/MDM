@@ -23,8 +23,8 @@ export const DEFAULT_CONFIG = {
   // Timing spread: if all uploads land within this many seconds, it looks
   // like one staged burst rather than a genuine cook→serve→eat sequence.
   burstThresholdSeconds: 90,
-  // The four items every daily submission must contain.
-  requiredItems: ['cooking', 'cooked_meal', 'serving_video', 'children'],
+  // The four daily items (food stages) every submission must contain.
+  requiredItems: ['cooking', 'cooked_meal', 'serving_video', 'plate'],
 };
 
 /** Haversine distance in metres between two {lat,lng} points. */
@@ -203,7 +203,7 @@ export function evaluateSubmission(submission, config = {}) {
   // --- AI check: menu compliance ---
   // Gather all dishes the AI saw in the meal + serving frames.
   const seen = new Set();
-  for (const k of ['cooked_meal', 'serving_video']) {
+  for (const k of ['cooked_meal', 'plate']) {
     const ai = files[k]?.ai;
     if (!ai) continue;
     (ai.dishes_visible || []).forEach((d) => seen.add(normDish(d)));
@@ -243,12 +243,6 @@ export function evaluateSubmission(submission, config = {}) {
   const cooked = files.cooked_meal?.ai;
   if (cooked && cooked.food_present === false) {
     flags.push(flag('no_food', 'red', 'No food visible in the cooked-meal photo', 'ai'));
-  }
-  const children = files.children?.ai;
-  if (children && children.children_eating === false) {
-    flags.push(
-      flag('no_children_eating', 'amber', 'Children not visibly eating in wide photo', 'ai')
-    );
   }
   const cooking = files.cooking?.ai;
   if (cooking && cooking.cooking_in_progress === false) {

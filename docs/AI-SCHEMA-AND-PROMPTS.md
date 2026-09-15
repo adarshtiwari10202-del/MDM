@@ -30,7 +30,6 @@ These are checked on all four items (quality, honesty, privacy, location/time st
 | Does it match the expected stage? | yes / no / unclear | Wrong-photo detection |
 | Image quality | clear / slightly blurry / too blurry / too dark / obstructed | Whether the photo is usable |
 | Is this a photo of a screen? | yes / no / unclear | Catches re-photographing an old picture (gaming) |
-| Any face clearly visible? | yes / no / unclear | Privacy rule — such a submission is voided |
 | GPS stamp present? + lat/long | yes/no + numbers | Location check (read off the photo stamp) |
 | Date-time on the stamp | text | Timing check |
 | Confidence | high / medium / low | How sure the AI is |
@@ -124,7 +123,6 @@ These are checked on all four items (quality, honesty, privacy, location/time st
 |---|---|
 | Scene doesn't match the slot | wrong photo |
 | Photo of a screen | re-photographed / gaming |
-| Face clearly visible | submission voided (privacy) |
 | Plate fullness low vs the school's norm/peers | portion low |
 | A prescribed dish marked "absent" | menu missing |
 | Cooking not in progress | cooking not genuine |
@@ -137,4 +135,4 @@ These are checked on all four items (quality, honesty, privacy, location/time st
 
 ## How we'll make sure it's accurate (next step)
 
-Before switching this on, we test it against ~30–50 **real Hargaon photos you've already reviewed**: we note the correct answer for each, run the AI, and score it field-by-field. Targets: dish detection ≥90%, wrong-photo ≥95%, plate-fullness (within one level) ≥85%, face-visible ≥98%. Anything that misses gets its wording/rubric improved and re-tested — then we wire it into the live dashboard.
+Before switching this on, we test it against ~30–50 **real Hargaon photos you've already reviewed**: we note the correct answer for each, run the AI, and score it field-by-field. Targets: dish detection ≥90%, wrong-photo ≥95%, plate-fullness (within one level) ≥85%, GPS/time stamp read ≥95%. Anything that misses gets its wording/rubric improved and re-tested — then we wire it into the live dashboard.

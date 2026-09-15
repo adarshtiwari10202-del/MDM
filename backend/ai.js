@@ -5,7 +5,7 @@
 //  • Video is ALWAYS downscaled to 360p and sampled at ~1 fps
 //    BEFORE any bytes reach the API. This is the biggest cost lever.
 //  • Images are downscaled to 1280px max before sending.
-//  • The model only reports what is visible (see prompt.js); it never
+//  • The model only reports what is visible (see prompts.v2.js); it never
 //    decides acceptable/not-acceptable.
 //
 // Requirements to run LIVE:
@@ -19,17 +19,22 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { config, requireGeminiKey } from './config.js';
-import { buildScreeningPrompt, buildVideoPrompt } from './prompt.js';
+import { buildPrompt, buildVideoPrompt } from './prompts.v2.js';
+import { getSchema } from './schemas.v2.js';
 
 const GEMINI_URL = (model) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 // ---- low-level Gemini call ----
-async function geminiGenerate(parts, { model = config.gemini.model } = {}) {
+async function geminiGenerate(parts, { model = config.gemini.model, responseSchema } = {}) {
   requireGeminiKey();
   const body = {
     contents: [{ parts }],
-    generationConfig: { temperature: 0, responseMimeType: 'application/json' },
+    generationConfig: {
+      temperature: 0,
+      responseMimeType: 'application/json',
+      ...(responseSchema ? { responseSchema } : {}),
+    },
   };
   const res = await fetch(`${GEMINI_URL(model)}?key=${config.gemini.apiKey}`, {
     method: 'POST',
@@ -75,16 +80,17 @@ function inlinePart(buffer, mime) {
   return { inline_data: { mime_type: mime, data: buffer.toString('base64') } };
 }
 
-// ---- public: analyze one image ----
-export async function analyzeImage(pathOrBuffer, menuItems = []) {
+// ---- public: analyze one image for a given stage ----
+// stage: 'cooking' | 'cooked_food' | 'plate'  (images);  menuItems: string[]
+export async function analyzeImage(pathOrBuffer, { stage, menuItems = [] } = {}) {
   let buffer, mime;
   if (Buffer.isBuffer(pathOrBuffer)) { buffer = pathOrBuffer; mime = 'image/jpeg'; }
   else { buffer = fs.readFileSync(pathOrBuffer); mime = mimeFromPath(pathOrBuffer); }
   const ds = await downscaleImage(buffer, mime);
   const text = await geminiGenerate([
-    { text: buildScreeningPrompt(menuItems) },
+    { text: buildPrompt(stage, { menuItems }) },
     inlinePart(ds.buffer, ds.mime),
-  ]);
+  ], { responseSchema: getSchema(stage) });
   return parseModelJson(text);
 }
 
@@ -109,13 +115,13 @@ export async function extractVideoFrames(videoPath, { fps = 1, height = 360, max
   return { dir, frames: frames.slice(0, maxFrames) };
 }
 
-// ---- public: analyze a serving video ----
-export async function analyzeVideo(videoPath, menuItems = []) {
+// ---- public: analyze a serving video (stage 'serving') ----
+export async function analyzeVideo(videoPath, { menuItems = [] } = {}) {
   const { dir, frames } = await extractVideoFrames(videoPath);
   try {
-    const parts = [{ text: buildVideoPrompt(menuItems, frames.length) }];
+    const parts = [{ text: buildVideoPrompt({ menuItems, frameCount: frames.length }) }];
     for (const f of frames) parts.push(inlinePart(fs.readFileSync(f), 'image/jpeg'));
-    const text = await geminiGenerate(parts);
+    const text = await geminiGenerate(parts, { responseSchema: getSchema('serving') });
     return parseModelJson(text);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true }); // clean up frames

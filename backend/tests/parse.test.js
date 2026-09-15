@@ -37,8 +37,11 @@ const ROW = {
 };
 
 const cols = resolveColumns(HEADERS);
-check('resolves all 4 media columns', cols.cooking && cols.cooked_meal && cols.serving_video && cols.children);
+check('resolves cooking + cooked_meal + serving_video', cols.cooking && cols.cooked_meal && cols.serving_video);
 check('resolves udise + date + headcount', cols.udise && cols.date && cols.headcount);
+// The CURRENT live form has no "plate" column yet (still the old children photo),
+// so plate must NOT resolve — it maps only once the form's 4th upload is relabelled.
+check('plate column absent in current form', !cols.plate);
 
 const sub = parseDailyRow(ROW, cols, { rowIndex: 2 });
 check('udise parsed', sub.school.udise === '9192912922');
@@ -47,9 +50,15 @@ check('headcount 56', sub.headcountReported === 56);
 check('submittedAt in IST', sub.submittedAt === '2026-09-14T02:30:45+05:30');
 check('cooking file id extracted', sub.files.cooking.fileId === '165e5MhtCSbHKRxydSz7-D2duifm9RCFc');
 check('cooked_meal file id extracted', sub.files.cooked_meal.fileId === '1SVtt-cQawBlaThzt3Ptn-c9MirxSkFH-');
-check('children file id extracted', sub.files.children.fileId === '1evdxIi8XPhpB5dbrv8pgS3WsczrK2X_I');
 check('empty video -> missing:true', sub.files.serving_video.missing === true);
+check('plate missing until form updated', sub.files.plate.missing === true);
 check('menu empty until configured (skips menu check)', Array.isArray(sub.menu) && sub.menu.length === 0);
+
+// Forward-looking: once the form's 4th upload asks for the plate photo,
+// a header containing "plate" maps to the plate slot.
+const HEADERS_V2 = HEADERS.slice(0, 9).concat(['फोटो: थाली में सम्पूर्ण भोजन / Photo: Plate with all the food']);
+const colsV2 = resolveColumns(HEADERS_V2);
+check('plate column resolves when present', !!colsV2.plate);
 
 // driveFileId url-shape coverage
 check('driveFileId /file/d/ shape', driveFileId('https://drive.google.com/file/d/ABC123abc_def/view') === 'ABC123abc_def');
