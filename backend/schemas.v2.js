@@ -25,7 +25,7 @@ const MENU_ITEMS = () => ({
 
 // --- COMMON block: in every reading ---
 const COMMON = {
-  observed_scene: S(['cooking', 'cooked_food_in_cookware', 'serving', 'served_plate', 'children_eating', 'other']),
+  observed_scene: S(['cooking', 'cooked_food_in_cookware', 'serving', 'served_plate', 'other']),
   scene_matches_expected: YN(),
   image_quality: S(['clear', 'slightly_blurry', 'too_blurry', 'too_dark', 'obstructed']),
   is_photo_of_a_screen: YN(),
@@ -73,14 +73,6 @@ const STAGE_FIELDS = {
     plate_fullness: S(['sparse', 'adequate', 'generous', 'unclear']),
     all_menu_components_together_on_one_plate: YN(),
     single_standard_plate: YN(),
-  },
-  children: {
-    children_present: YN(),
-    children_eating: YN(),
-    approx_group_size: S(['none', 'few_under_10', 'some_10_to_30', 'many_over_30', 'unclear']),
-    eating_from_plates: YN(),
-    wide_angle_no_closeups: YN(),
-    faces_clearly_visible: YN(),
   },
 };
 

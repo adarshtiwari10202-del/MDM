@@ -1,254 +1,140 @@
-# AI Analysis — Per-Scene Schemas & Prompts (v2 design)
+# AI Analysis — What the AI Reads From Each Photo (v2 design)
 
-*Step 1 (what each photo/video must yield) + Step 2 (how we ask for it).*
-*Design for review — not yet wired into the live pipeline. Next: eval on real photos, then wire in.*
-
----
-
-## Design rules baked into this
-
-1. **AI perceives, code decides.** Every field below is an *observation*. No field says "acceptable", applies a threshold, or does arithmetic — the flag engine (code) does that.
-2. **"Unclear" is always allowed.** Judgment fields are tri-state `yes | no | unclear` (or an enum with `unclear`). This is what stops the model inventing answers when the photo is bad.
-3. **Structured output, enforced.** Each schema is handed to Gemini as a `responseSchema`, so the model *must* return this exact shape — not "please return JSON".
-4. **One reading per media item, stored once.** Comparisons (peer, self-history) run later on this stored text, never by re-analysing images.
-5. **Rubrics, not adjectives.** Fuzzy scales (plate fullness, cleanliness) are defined with anchors so ratings are consistent across schools and days.
+*How the AI looks at each of the four daily food captures, what it reports, and exactly what we tell it.*
+*Design for review — not yet live. Next step: test on real Hargaon photos, then switch on.*
 
 ---
 
-## The daily captures (stages)
+## The idea in one line
 
-| Stage key | What the school sends |
-|-----------|-----------------------|
-| `cooking` | Food being cooked, **kitchen in frame** |
-| `cooked_food` | Final cooked food **in the cookware** |
-| `serving` | Short **video**: food served from cookware onto a plate |
-| `plate` | A **plate with all the food** on it |
-| `children` | Wide shot of children eating (consumption evidence) |
+For each photo/video the AI returns a small set of **plain observations** — never a verdict. Code turns those observations into flags; the reviewer makes the final call. Every question allows an **"unclear"** answer, so the AI never has to guess.
 
-> **Open decision (please confirm):** is the daily set these **5** items (4 food stages + children), or do the 4 food stages **replace** the children photo? The schema supports either — it only changes which stages we require.
+## The four daily captures
 
----
+1. **Cooking** — food being cooked, kitchen in frame
+2. **Cooked food** — the finished food in the cookware
+3. **Serving** — a short video of food served from cookware onto a plate
+4. **Plate** — a plate with all the food on it
 
-## Common block — returned for EVERY item
-
-These fields are in every reading regardless of stage (authenticity, privacy, quality, stamp):
-
-```json
-{
-  "observed_scene": "cooking | cooked_food_in_cookware | serving | served_plate | children_eating | other",
-  "scene_matches_expected": "yes | no | unclear",
-  "image_quality": "clear | slightly_blurry | too_blurry | too_dark | obstructed",
-  "is_photo_of_a_screen": "yes | no | unclear",
-  "face_clearly_visible": "yes | no | unclear",
-  "gps_present": "yes | no",
-  "gps_lat": number | null,
-  "gps_lng": number | null,
-  "stamp_place_text": string | null,
-  "capture_datetime_text": string | null,
-  "confidence": "high | medium | low",
-  "notes": "one or two short factual sentences"
-}
-```
-
-- `scene_matches_expected` catches wrong-photo-in-wrong-slot (e.g., a plate photo in the cooking slot).
-- `is_photo_of_a_screen` catches re-photographing an old picture off a phone/PC (anti-gaming).
-- `face_clearly_visible` enforces the no-faces rule → the reviewer voids such a submission.
-- GPS + `capture_datetime_text` are read off the GPS-camera stamp; code merges them into the timing/geo checks.
+*(The children-eating photo has been removed.)*
 
 ---
 
-## Stage schemas (added to the common block)
+## Common questions — asked on EVERY capture
 
-### 1. `cooking` — food being cooked, kitchen in frame
-```json
-{
-  "cooking_in_progress": "yes | no | unclear",
-  "heat_source": "flame | steam_only | no_heat_visible | unclear",
-  "food_or_ingredients_visible": "yes | no | unclear",
-  "large_cooking_vessel_visible": "yes | no | unclear",
-  "kitchen_visible_in_frame": "yes | no | unclear",
-  "person_cooking_present": "yes | no | unclear",
-  "kitchen_cleanliness": "clean | average | dirty | unclear",
-  "dishes_being_cooked": ["string"]
-}
-```
-*`person_cooking_present` = presence only, never identity. `kitchen_cleanliness` is a soft hygiene signal.*
+These are checked on all four items (quality, honesty, privacy, location/time stamp):
 
-### 2. `cooked_food` — final cooked food in cookware
-```json
-{
-  "food_present": "yes | no | unclear",
-  "top_down_view": "yes | no | unclear",
-  "number_of_distinct_dishes": integer,
-  "dishes_visible": ["string"],
-  "menu_items": [ { "item": "string", "status": "present | absent | unclear" } ],
-  "appears_freshly_cooked": "yes | no | unclear",
-  "cookware_fill_level": "full | about_half | low | unclear"
-}
-```
-*`menu_items` is filled from the prescribed menu we pass in. `cookware_fill_level` is a soft, non-volumetric signal — never converted to litres.*
-
-### 3. `serving` — video, cookware → plate
-```json
-{
-  "serving_action_visible": "yes | no | unclear",
-  "food_moved_from_cookware_to_plate": "yes | no | unclear",
-  "dishes_served": ["string"],
-  "plate_or_thali_visible": "yes | no | unclear",
-  "appears_single_continuous_clip": "yes | no | unclear"
-}
-```
-*`appears_single_continuous_clip` is an authenticity signal (stitched/edited clip looks off).*
-
-### 4. `plate` — a plate with all the food  *(the portion item)*
-```json
-{
-  "dishes_on_plate": ["string"],
-  "menu_items": [ { "item": "string", "status": "present | absent | unclear" } ],
-  "plate_fullness": "sparse | adequate | generous | unclear",
-  "all_menu_components_together_on_one_plate": "yes | no | unclear",
-  "single_standard_plate": "yes | no | unclear"
-}
-```
-*`plate_fullness` drives portion-adequacy — used **relatively** (vs this school's own norm and vs peers today), never as an absolute grade.*
-
-### 5. `children` — wide shot, children eating
-```json
-{
-  "children_present": "yes | no | unclear",
-  "children_eating": "yes | no | unclear",
-  "approx_group_size": "none | few_under_10 | some_10_to_30 | many_over_30 | unclear",
-  "eating_from_plates": "yes | no | unclear",
-  "wide_angle_no_closeups": "yes | no | unclear",
-  "faces_clearly_visible": "yes | no | unclear"
-}
-```
-*`approx_group_size` is a coarse band, **not** a head count of individuals — dignity/no-surveillance.*
+| What the AI reports | Possible answers | What it tells us |
+|---|---|---|
+| Which scene is this really? | cooking / cooked food / serving / plate / other | Catches a photo put in the wrong slot |
+| Does it match the expected stage? | yes / no / unclear | Wrong-photo detection |
+| Image quality | clear / slightly blurry / too blurry / too dark / obstructed | Whether the photo is usable |
+| Is this a photo of a screen? | yes / no / unclear | Catches re-photographing an old picture (gaming) |
+| Any face clearly visible? | yes / no / unclear | Privacy rule — such a submission is voided |
+| GPS stamp present? + lat/long | yes/no + numbers | Location check (read off the photo stamp) |
+| Date-time on the stamp | text | Timing check |
+| Confidence | high / medium / low | How sure the AI is |
+| Notes | one or two sentences | Plain description for the reviewer |
 
 ---
 
-## The rubrics (anchors for the fuzzy scales)
+## Capture 1 — Cooking (food being cooked, kitchen in frame)
 
-**`plate_fullness`**
-- `sparse` — plate base clearly visible through/around the food; thin covering.
-- `adequate` — food covers most of the plate in an even layer; distinct portions.
-- `generous` — food heaped/mounded above the rim of the plate's well.
-- `unclear` — angle, glare, or crop prevents a fair judgment.
+| What the AI reports | Possible answers | What it tells us |
+|---|---|---|
+| Is cooking genuinely in progress? | yes / no / unclear | Cooking is really happening (not staged) |
+| Heat source | flame / steam only / none / unclear | Corroborates active cooking |
+| Food or ingredients visible? | yes / no / unclear | Something is actually being cooked |
+| Large cooking vessel visible? | yes / no / unclear | Cooking at scale, not a token pot |
+| Is the kitchen in frame? | yes / no / unclear | The required framing was followed |
+| Is a person cooking present? | yes / no / unclear | Presence only — never who |
+| Kitchen cleanliness | clean / average / dirty / unclear | Soft hygiene signal |
+| Dishes being cooked | list | What's on the stove |
 
-**`cookware_fill_level`**
-- `full` — food fills roughly three-quarters or more of the vessel.
-- `about_half` — around half full.
-- `low` — roughly a quarter or less remaining.
-- `unclear` — can't see the vessel depth.
+## Capture 2 — Cooked food (finished food in the cookware)
 
-**`kitchen_cleanliness`**
-- `clean` — surfaces tidy, no visible refuse or spillage.
-- `average` — some clutter or minor spillage.
-- `dirty` — visible refuse, standing waste, or pests.
-- `unclear` — kitchen not sufficiently visible.
+| What the AI reports | Possible answers | What it tells us |
+|---|---|---|
+| Is food present? | yes / no / unclear | There is a cooked meal |
+| Top-down view? | yes / no / unclear | Required framing followed |
+| Number of distinct dishes | a number | How many items were cooked |
+| Dishes visible | list | What was cooked |
+| For each prescribed menu item | present / absent / unclear | **Menu compliance** — is each required dish there |
+| Looks freshly cooked? | yes / no / unclear | Fresh vs stale/re-used |
+| Cookware fill level | full / about half / low / unclear | Soft quantity signal (never converted to litres) |
 
----
+## Capture 3 — Serving (video: cookware → plate)
 
-## The prompts (Step 2)
+| What the AI reports | Possible answers | What it tells us |
+|---|---|---|
+| Serving action visible? | yes / no / unclear | Food is actually being served |
+| Food moved from cookware to plate? | yes / no / unclear | The serving really happened |
+| Dishes served | list | What reached the plate |
+| Plate/thali visible? | yes / no / unclear | Served onto a proper plate |
+| Looks like one continuous clip? | yes / no / unclear | Authenticity (not stitched/edited) |
 
-### Shared preamble (prepended to every stage prompt)
-```
-You are screening one media item from a school Mid-Day Meal (PM POSHAN) programme
-in rural Uttar Pradesh, India. Report ONLY what is visibly present. Do not judge
-quality, nutrition, or whether the meal is acceptable — only describe what you see.
+## Capture 4 — Plate (a plate with all the food) — *the portion check*
 
-Rules:
-- If something is not clearly visible or you are unsure, answer "unclear" (or null).
-  Never guess. "unclear" is always a valid, expected answer.
-- Do not identify any person. Report only whether a person is present, never who.
-- Many photos carry a GPS-camera stamp (a band showing address, latitude,
-  longitude, date and time). If present, read the numeric latitude/longitude and
-  the date-time text exactly; otherwise use null.
-- Return ONLY the required JSON object, matching the given schema exactly.
-
-Common Indian dishes to recognise: rice, dal, khichdi, tehri, roti/chapati, sabzi,
-aloo/potato, kadhi, egg, banana, milk, poha, soya badi, bajra, moong.
-```
-
-### Per-stage instruction (added after the preamble)
-
-**cooking**
-```
-This should show food being cooked with the kitchen visible.
-Report: is cooking genuinely in progress (flame/steam/stirring)? is the kitchen
-in frame? is a large cooking vessel present? is a person cooking present (presence
-only)? rate kitchen cleanliness using the rubric. List any dishes being cooked.
-```
-
-**cooked_food**
-```
-This should show the finished cooked food in the cookware, ideally top-down.
-Today's prescribed menu is: {menu}.
-Report: is food present? is it a top-down view? how many distinct dishes? list the
-dishes you see. For EACH prescribed menu item, mark present / absent / unclear
-based only on what is visible. Does it look freshly cooked? Rate cookware fill
-level using the rubric.
-```
-
-**serving** *(video — frames sampled ~1 fps)*
-```
-These frames are sampled from a short video of food being served from the cookware
-onto a plate. Treat them together as one clip.
-Report: is a serving action visible? is food moved from cookware onto a plate? which
-dishes are served? is a plate/thali visible? does it look like one continuous clip?
-```
-
-**plate**
-```
-This should show a single plate with all of today's food on it.
-Today's prescribed menu is: {menu}.
-Report: list the dishes on the plate. For EACH prescribed menu item, mark present /
-absent / unclear. Rate plate fullness using the rubric (sparse/adequate/generous).
-Are all menu components together on one plate? Is it a single standard plate?
-```
-
-**children**
-```
-This should be a wide shot of children eating. It must NOT contain clear faces or
-close-ups of individuals.
-Report: are children present? are they eating? approximate group size as a band
-(not an exact count). are they eating from plates? is it a wide shot without
-close-ups? are any faces clearly visible?
-```
+| What the AI reports | Possible answers | What it tells us |
+|---|---|---|
+| Dishes on the plate | list | What the child actually gets |
+| For each prescribed menu item | present / absent / unclear | Menu compliance, at the plate |
+| **Plate fullness** | sparse / adequate / generous / unclear | **Portion size** — compared to the school's own norm & peers |
+| All menu components together on one plate? | yes / no / unclear | The full meal is served together |
+| Single standard plate? | yes / no / unclear | A fair, comparable reference |
 
 ---
 
-## What each new field unlocks downstream (code-side, later)
+## The rubrics (so fuzzy words mean the same thing every time)
 
-| New/'richer' observation | Flag or insight it will feed (Step 5) |
+| Scale | sparse / low | adequate / half | generous / full | unclear |
+|---|---|---|---|---|
+| **Plate fullness** | plate base visible through the food; thin covering | food covers most of the plate evenly; distinct portions | food heaped above the plate's well | angle/glare/crop prevents a fair call |
+| **Cookware fill** | ~a quarter or less left | ~half full | ~three-quarters or more | vessel depth not visible |
+| **Kitchen cleanliness** | — | some clutter / minor spillage | tidy, no refuse (this is "clean") | kitchen not visible enough |
+
+---
+
+## Exactly what we tell the AI (the prompts)
+
+**Said on every capture (the preamble):**
+> You are screening one media item from a school Mid-Day Meal (PM POSHAN) programme in rural Uttar Pradesh, India. Report ONLY what is visibly present. Do not judge quality, nutrition, or whether the meal is acceptable — only describe what you see.
+> • If something is not clearly visible or you are unsure, answer "unclear". Never guess.
+> • Do not identify any person — only whether a person is present.
+> • If a GPS-camera stamp is visible (address, latitude, longitude, date, time), read the numbers and date-time exactly; otherwise leave them blank.
+> • Return only the required answers, in the exact format given.
+
+**Cooking:**
+> This should show food being cooked with the kitchen visible. Report whether cooking is genuinely in progress (flame/steam/stirring), whether the kitchen is in frame, whether a large cooking vessel is present, whether a person cooking is present (presence only), rate kitchen cleanliness using the rubric, and list any dishes being cooked.
+
+**Cooked food:**
+> This should show the finished cooked food in the cookware, ideally top-down. Today's prescribed menu is: {menu}. Report whether food is present, whether it's a top-down view, how many distinct dishes, list the dishes, and for EACH prescribed menu item mark present / absent / unclear. Say whether it looks freshly cooked and rate cookware fill level using the rubric.
+
+**Serving (video):**
+> These frames are from a short video of food being served from the cookware onto a plate. Treat them as one clip. Report whether a serving action is visible, whether food is moved from cookware onto a plate, which dishes are served, whether a plate/thali is visible, and whether it looks like one continuous clip.
+
+**Plate:**
+> This should show a single plate with all of today's food. Today's prescribed menu is: {menu}. List the dishes on the plate, and for EACH prescribed menu item mark present / absent / unclear. Rate plate fullness using the rubric. Say whether all menu components are together on one plate, and whether it's a single standard plate.
+
+---
+
+## What the new signals will let us flag (built later, in code)
+
+| Observation | Flag it feeds |
 |---|---|
-| `scene_matches_expected = no` | `wrong_photo` — item doesn't match its slot |
-| `is_photo_of_a_screen = yes` | `rephotographed` — anti-gaming |
-| `face_clearly_visible = yes` | `face_visible` — submission void per policy |
-| `plate_fullness` + history/peers | `portion_low` (relative, not absolute) |
-| `menu_items[].status = absent` | `menu_missing` (unchanged, now per-item + unclear-aware) |
-| `cooking_in_progress = no` | `no_cooking` (unchanged) |
-| `children_eating = no` | `no_children_eating` (unchanged) |
-| `kitchen_cleanliness = dirty` | `hygiene_low` (soft, amber) |
-| `appears_single_continuous_clip = no` | `edited_clip` — authenticity |
+| Scene doesn't match the slot | wrong photo |
+| Photo of a screen | re-photographed / gaming |
+| Face clearly visible | submission voided (privacy) |
+| Plate fullness low vs the school's norm/peers | portion low |
+| A prescribed dish marked "absent" | menu missing |
+| Cooking not in progress | cooking not genuine |
+| Kitchen dirty | hygiene low (soft) |
+| Clip not continuous | edited video |
 
-*(`unclear` never raises a red flag on its own — it routes to the human, or is ignored, by design.)*
+*"unclear" never raises a red flag by itself — it routes to the human.*
 
 ---
 
-## The eval bar (Step 3 preview)
+## How we'll make sure it's accurate (next step)
 
-Before wiring in, each field must clear a target on a labelled set of ~30–50 real
-Hargaon photos:
-
-| Field type | Target |
-|---|---|
-| Dish detection (present/absent) | ≥ 90% agreement with human label |
-| Scene match / wrong-photo | ≥ 95% |
-| `children_eating`, `cooking_in_progress` | ≥ 90% |
-| `plate_fullness` (within one level) | ≥ 85% |
-| GPS/time stamp read (when present) | ≥ 95% |
-| Face-visible detection | ≥ 98% (safety-critical) |
-
-Fields that miss the bar get a reworded prompt / an extra rubric line / an example,
-then re-scored — until they pass or we drop the field as unreliable.
+Before switching this on, we test it against ~30–50 **real Hargaon photos you've already reviewed**: we note the correct answer for each, run the AI, and score it field-by-field. Targets: dish detection ≥90%, wrong-photo ≥95%, plate-fullness (within one level) ≥85%, face-visible ≥98%. Anything that misses gets its wording/rubric improved and re-tested — then we wire it into the live dashboard.

@@ -39,9 +39,6 @@ Report: is a serving action visible? is food moved from cookware onto a plate? w
 Today's prescribed menu is: ${menu}.
 Report: list the dishes on the plate. For EACH prescribed menu item, mark present / absent / unclear. Rate plate fullness using the rubric below. Are all menu components together on one plate? Is it a single standard plate?
 ${RUBRICS.plate_fullness}`,
-
-  children: () => `This item should be a WIDE shot of children eating. It must NOT contain clear faces or close-ups of individuals.
-Report: are children present? are they eating? approximate group size as a band (not an exact count of individuals)? are they eating from plates? is it a wide shot without close-ups? are any faces clearly visible?`,
 };
 
 /**
