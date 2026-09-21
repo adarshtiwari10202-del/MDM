@@ -31,7 +31,7 @@
   .wrap{max-width:1180px;margin:0 auto;padding:20px 24px 60px}
 
   /* KPI row */
-  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
   .kpi{background:var(--white);border:1px solid var(--hair);border-radius:12px;padding:14px 16px;
     box-shadow:0 1px 2px rgba(0,49,107,.04)}
   .kpi .n{font-family:"Archivo";font-size:28px;font-weight:800;line-height:1}
@@ -107,6 +107,47 @@
   .footnote{color:var(--grey);font-size:12px;margin-top:26px;text-align:center}
   .mock-banner{background:#fff7d6;border:1px solid #f0dd8a;color:#7a6a1f;font-size:12.5px;
     padding:8px 14px;border-radius:8px;margin-bottom:18px}
+
+  /* Attendance banner (schools that have not submitted) */
+  .attend{display:flex;align-items:center;gap:16px;cursor:pointer;background:var(--white);
+    border:1px solid var(--hair);border-left:6px solid var(--red);border-radius:12px;
+    padding:14px 18px;margin-bottom:16px;transition:box-shadow .15s,transform .05s}
+  .attend:hover{box-shadow:0 4px 14px rgba(0,49,107,.10)}
+  .attend:active{transform:translateY(1px)}
+  .attend.ok{border-left-color:var(--teal)}
+  .attend .big{font-family:"Archivo",sans-serif;font-weight:800;font-size:30px;color:var(--red);line-height:1}
+  .attend.ok .big{color:var(--teal)}
+  .attend .txt{flex:1;min-width:0}
+  .attend .lbl{font-size:14px;font-weight:700;color:var(--ink)}
+  .attend .hint{font-size:12px;color:var(--grey);margin-top:2px}
+  .attend .cta{font-size:12.5px;color:var(--navy);font-weight:700;white-space:nowrap}
+
+  /* Roster modal */
+  .modal-back{position:fixed;inset:0;background:rgba(10,20,40,.45);display:none;
+    align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow:auto}
+  .modal-back.show{display:flex}
+  .modal{background:#fff;border-radius:14px;max-width:660px;width:100%;max-height:85vh;
+    display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal-h{padding:18px 20px 14px;border-bottom:1px solid var(--hair);
+    display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .modal-h h3{font-size:17px;margin:0}
+  .modal-h .msub{font-size:12.5px;color:var(--grey);margin-top:3px}
+  .modal-h .x{background:none;border:0;font-size:24px;cursor:pointer;color:var(--grey);line-height:1;padding:0 4px}
+  .modal-tools{display:flex;gap:6px;flex-wrap:wrap;padding:12px 20px 0}
+  .modal-tools button{font:inherit;font-size:12.5px;font-weight:700;border:1.5px solid var(--hair);
+    background:#fff;color:var(--grey);border-radius:20px;padding:5px 13px;cursor:pointer}
+  .modal-tools button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .modal-search{margin:12px 20px 0;border:1px solid var(--hair);border-radius:8px;
+    padding:8px 11px;font:inherit;font-size:13px}
+  .modal-list{overflow:auto;padding:8px 20px 20px;margin-top:6px}
+  .slrow{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 2px;border-bottom:1px solid #f0f0ee}
+  .slrow .nm{font-size:13.5px;font-weight:600}
+  .slrow .ud{font-size:11.5px;color:var(--grey);margin-top:1px}
+  .badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+  .badge.no{background:#faece7;color:var(--red)}
+  .badge.yes{background:#e7f1ec;color:var(--teal)}
+  @media(max-width:560px){ .attend .big{font-size:24px} }
 </style>
 </head>
 <body>
@@ -136,6 +177,15 @@
       <span id="dateSummary" class="datesum"></span>
     </div>
 
+    <div class="attend" id="attend" role="button" tabindex="0" style="display:none">
+      <div class="big" id="attendNum">—</div>
+      <div class="txt">
+        <div class="lbl" id="attendLbl">Schools yet to submit</div>
+        <div class="hint" id="attendHint"></div>
+      </div>
+      <div class="cta">View list ›</div>
+    </div>
+
     <div class="kpis" id="kpis"></div>
 
     <div class="section-h">
@@ -151,6 +201,25 @@
 
     <div class="footnote">
       AI observes what is visible; only the reviewer's verdict goes on record. No faces required.
+    </div>
+  </div>
+
+  <div class="modal-back" id="rosterModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rmTitle">
+      <div class="modal-h">
+        <div>
+          <h3 id="rmTitle">School submissions</h3>
+          <div class="msub" id="rmSub"></div>
+        </div>
+        <button class="x" id="rmClose" aria-label="Close">×</button>
+      </div>
+      <div class="modal-tools" id="rmTabs">
+        <button data-t="pending" class="active">Not submitted</button>
+        <button data-t="done">Submitted</button>
+        <button data-t="all">All</button>
+      </div>
+      <input class="modal-search" id="rmSearch" placeholder="Search school name or UDISE…">
+      <div class="modal-list" id="rmList"></div>
     </div>
   </div>
 
@@ -627,11 +696,23 @@ async function loadData(){
   return MOCK_DATA;
 }
 
+// Baseline roster of schools expected to submit daily. Embedded snapshot is the
+// fallback; live mode refreshes it from /api/roster (Sheet1 of the daily sheet).
+const ROSTER_FALLBACK=[["9240506307","AGUAPUR (PS)"],["9240505501","AKTIYARPUR (PS)"],["9240505502","AKTIYARPUR (UPS)"],["9240507501","AMITIYA (PS)"],["9240500101","ARMI (PS)"],["9240502902","BAD KHERWA (Composite)"],["9240508101","BADELIYA (PS)"],["9240502901","BADKHERVA NAVEEN (PS)"],["9240509502","BADKHERVA SHIVPURI (PS)"],["9240507801","BAHERWA (PS)"],["9240507802","BAHERWA (UPS)"],["9240505201","BAKSOHIYA (PS)"],["9240504901","BANIHAR (PS)"],["9240504801","BANKIPUR (PS)"],["9240503801","BAREEADEEH (PS)"],["9240504602","BAROSA (Composite)"],["9240503204","BEHADPATU (PS)"],["9240502002","BELAMAU KALAN (Composite)"],["9240502101","BELAMAU KHURD (PS)"],["9240501003","BELIDHARA (PS)"],["9240508301","BENIPUR WAIZPUR (PS)"],["9240508302","BENIPUR WAIZPUR (UPS)"],["9240500502","BENIRAJA DASHRATHPUR (Composite)"],["9240509601","BHADEVA (PS)"],["9240509602","BHADEVA (UPS)"],["9240507001","BHAISAHA (PS)"],["9240504402","BHANVAPUR (Composite)"],["9240510401","BHATPURWA (PS)"],["9240501001","BHEEKHPUR (PS)"],["9240504205","BHUDKUDI (PS)"],["9240506806","BHULBHULIYA (PS)"],["9240509001","BUDHANPUR (PS)"],["9240509002","BUDHANPUR (UPS)"],["9240504208","CHAKJOSHI (PS)"],["9240507301","CHANDNAPUR (PS)"],["9240509102","CHANDPUR (PS)"],["9240506401","CHAUCHIYA (PS)"],["9240504702","DADVARA (Composite)"],["9240515201","DALJEETPURWA (PS)"],["9240500503","DASHRATPUR (PS)"],["9240501102","DEEPPUR (PS)"],["9240507101","DEYEE RAMPUR (PS)"],["9240501801","DHOLAI KALAN (PS)"],["9240501802","DHOLAI KALAN (UPS)"],["9240506804","DIHUA (PS)"],["9240509201","DOSTPUR (PS)"],["9240509202","DOSTPUR (UPS)"],["9240501701","FATTEPUR MATIMPUR (PS)"],["9240509701","FATTEPUR MEERABEHAD (PS)"],["9240501702","FATTEPUR NAVINAGAR (PS)"],["9240510801","FIROJPUR (PS)"],["9240514201","FIROJPUR GADSARI (Composite)"],["9240503302","FIROJPUR NAYAGAON (UPS)"],["9240500805","GANESHPUR (PS)"],["9240510901","GAURA PATTI (PS)"],["9240505002","GURDHAPA (PS)"],["9240505003","GURDHAPA (UPS)"],["9240504301","HAIDARPUR (PS)"],["9240504302","HARDASPUR (PS)"],["9240511902","HARGAON (UPS)"],["9240510101","HARGAON-1 (PS)"],["9240510201","HARGAON-2 (PS)"],["9240507203","HARI RAMPUR (Composite)"],["9240515301","HARIVANSHPUR (PS)"],["9240506304","HATHURI (PS)"],["9240507403","HILALPUR (PS)"],["9240500201","IBRAHIMPUR (PS)"],["9240509403","ISMAILPUR (UPS)"],["9240509401","ISMAIYL (PS)"],["9240511201","JAHANGEERABAD (PS)"],["9240515401","JAITAPUR (PS)"],["9240509402","JALALIPUR (PS)"],["9240507401","JARTHUA (PS)"],["9240507402","JARTHUA (UPS)"],["9240505401","JHARIYA (PS)"],["9240510301","KABEERPUR (PS)"],["9240511601","KABEERPUR (UPS)"],["9240500103","KAIMA (PS)"],["9240511003","KAJIPUR (PS)"],["9240506803","KAKRAHI (Composite)"],["9240506802","KAKRAHI (PS)"],["9240510503","KALINAMA (PS)"],["9240510502","KALYANPUR (Composite)"],["9240500804","KAMYPUR (PS)"],["9240511901","KANYA HARGAON (Composite)"],["9240514701","KASHA (PS)"],["9240500803","KASIMPUR (PS)"],["9240504201","KATESAR (PS)"],["9240504202","KATESAR (UPS)"],["9240508703","KATIYARA (Composite)"],["9240504501","KATKA (PS)"],["9240508201","KHAJUWA (PS)"],["9240505702","KHAMONA (Composite)"],["9240512001","KHEDRAPUR (PS)"],["9240511301","KORAIYA BHADEVAN (PS)"],["9240500301","KORAIYA GANGADAS (PS)"],["9240500302","KORAIYA GANGADAS (UPS)"],["9240504002","KORAIYA JAGDEESHPUR (Composite)"],["9240506503","KORAYA JANGAL (PS)"],["9240507602","KUSIYARI (Composite)"],["9240502603","LAGHNIYA NEWADA (PS)"],["9240506805","LAUKA (PS)"],["9240506807","LGHANIYA (MAHADEV ATRA) (PS)"],["9240506702","MAHADEV ATRA (Composite)"],["9240509901","MAHANANDPUR (PS)"],["9240504207","MAINIPURVA (PS)"],["9240502401","MALIHABAD (PS)"],["9240506301","MALLAPUR (PS)"],["9240506305","MALLAPUR (UPS)"],["9240503901","MANGRUWA (PS)"],["9240503902","MANGRUWA (UPS)"],["9240509603","MANNAPUR (PS)"],["9240501703","MATEENPUR (PS)"],["9240506001","MOHARSA (PS)"],["9240506002","MOHARSA (UPS)"],["9240502804","MOTIPUR (PS)"],["9240505901","MUDIKHERA (PS)"],["9240503501","MUDRASAN-1 (PS)"],["9240503502","MUDRASAN-2 (PS)"],["9240501601","MUMTAZPUR (PS)"],["9240501602","MUMTAZPUR (UPS)"],["9240508801","NAKURI KALAN (PS)"],["9240508902","NAKURI PITPUR (Composite)"],["9240503402","NARAIYANPUR (Composite)"],["9240505601","NARHARPUR (PS)"],["9240502501","NAROOTAMPUR (PS)"],["9240503202","NAUNER (Composite)"],["9240504103","NAVI NAGAR (UPS)"],["9240504101","NAVINAGAR-1 (PS)"],["9240504102","NAVINAGAR-2 (PS)"],["9240506603","NAYAPURWA (PS)"],["9240502602","NEVADA (Composite)"],["9240508402","NIGOHA (Composite)"],["9240500601","NOORPUR (PS)"],["9240500602","OJHIYAPUR (PS)"],["9240501301","PACHAUNAPUR (PS)"],["9240502302","PACHEHARA (Composite)"],["9240506502","PAITLA (Composite)"],["9240504603","PAKARIYA BAROSA (PS)"],["9240510402","PAKRIYA BHATPURWA (Composite)"],["9240511001","PARSEHRA NATH (PS)"],["9240500704","PARSEHRA NATH (UPS)"],["9240500703","PARSEHRA SHAREEFPUR (Composite)"],["9240500702","PARSEHRA SHAREEFPUR-2 (PS)"],["9240508001","PARSEHRAMAL (PS)"],["9240503701","PATTI KATESAR (PS)"],["9240506306","PAYAK NAGAR (PS)"],["9240507701","PICHAURA (PS)"],["9240505101","PIPRA GHURI (PS)"],["9240505103","PIPRA GHURI (UPS)"],["9240501101","PIPRAMIL (PS)"],["9240511401","POKHRA (Composite)"],["9240506901","POKHRA (PS)"],["9240507202","PUNNAPUR (PS)"],["9240500801","QYOTI KALAN (PS)"],["9240500802","QYOTI KALAN (UPS)"],["9240509801","RAHI (PS)"],["9240509802","RAHI (UPS)"],["9240510701","RAIPUR (PS)"],["9240507902","RAJEPUR (Composite)"],["9240501002","RAKSHA (PS)"],["9240506101","RANIGANJ (PS)"],["9240507803","RASOOLPUR (PS)"],["9240505301","RAUNA (PS)"],["9240505302","RAUNA (UPS)"],["9240509301","RICHHIN (PS)"],["9240509303","RICHHIN (UPS)"],["9240505104","RIKHI PURWA (PS)"],["9240505801","RUKNAPUR (PS)"],["9240505703","SADHUWAPUR (PS)"],["9240508702","SAHANIYAPUR (PS)"],["9240511503","SAHDEV PURWA (Composite)"],["9240503002","SAKLANPUR (Composite)"],["9240504206","SALARPUR (Composite)"],["9240501404","SARAIYAN (PS)"],["9240503101","SARAIYAN RAH (PS)"],["9240502801","SELUMAU (PS)"],["9240508601","SEMRI BHAN (PS)"],["9240501901","SEMRI MOTIMADPUR (PS)"],["9240508502","SHEKHAPUR MUSEPUR (Composite)"],["9240510001","SHEKHVAPUR (PS)"],["9240501501","SIKANDARPUR (PS)"],["9240510601","SRAIYAN PITTHU (PS)"],["9240501403","SULTANPUR (Composite)"],["9240500402","SURJIPARA (Composite)"],["9240508704","TAHIPUR (PS)"],["9240510303","TELLAPUR (PS)"],["9240506201","UDNAPUR (PS)"],["9240507903","UJAGAR PURWA (PS)"],["9240508005","ULAWALPUR (PS)"],["9240500901","UMARIYA KALA (PS)"],["9240501401","UMRI SALEMPUR (PS)"],["9240501402","UMRI SALEMPUR (UPS)"],["9240506602","VAJEERPUR (Composite)"],["9240509103","VISHNUPUR (Composite)"]].map(a=>({udise:a[0],name:a[1],block:'Hargaon (R)',district:'SITAPUR'}));
+
+async function loadRoster(){
+  try{
+    const r=await fetch('/api/roster');
+    if(r.ok){ const j=await r.json(); if(Array.isArray(j.schools)&&j.schools.length) return j.schools; }
+  }catch(e){ /* API down → embedded snapshot */ }
+  return ROSTER_FALLBACK;
+}
+
 const FLAG_STORE_KEY = 'mdm_verdicts_v1';
 function loadVerdicts(){ try{return JSON.parse(localStorage.getItem(FLAG_STORE_KEY))||{}}catch(e){return{}} }
 function saveVerdict(id,v){ const all=loadVerdicts(); all[id]=v; try{localStorage.setItem(FLAG_STORE_KEY,JSON.stringify(all))}catch(e){} }
 
-let ROWS=[], FILTER='all', SELECTED_DATE='all';
+let ROWS=[], ROSTER=[], FILTER='all', SELECTED_DATE='all';
 
 function fmtTime(iso){ if(!iso) return '—';
   return new Date(iso).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
@@ -644,6 +725,60 @@ function uniqueSubmissions(rows){
   const s=new Set();
   rows.forEach(r=>{ const u=(r.school&&r.school.udise||'').trim(); const n=(r.school&&r.school.name||'').trim().toLowerCase(); s.add(u+'|'+n); });
   return s.size;
+}
+
+// Set of UDISE codes that submitted on the selected date.
+function submittedUdiseSet(){
+  const s=new Set();
+  dateRows().forEach(r=>{ const u=(r.school&&r.school.udise||'').trim(); if(u) s.add(u); });
+  return s;
+}
+
+// Attendance = roster schools that have (not) submitted for the selected date.
+function attendance(){
+  const submitted=submittedUdiseSet();
+  const pending=ROSTER.filter(s=>!submitted.has(String(s.udise).trim()));
+  const done=ROSTER.filter(s=>submitted.has(String(s.udise).trim()));
+  return { submitted, pending, done, total:ROSTER.length };
+}
+
+function renderAttendance(){
+  const el=document.getElementById('attend');
+  if(!ROSTER.length){ el.style.display='none'; return; }
+  const a=attendance();
+  el.style.display='flex';
+  el.classList.toggle('ok', a.pending.length===0);
+  const when = SELECTED_DATE==='all' ? 'on any date' : 'on '+fmtDate(SELECTED_DATE);
+  document.getElementById('attendNum').textContent=a.pending.length;
+  document.getElementById('attendLbl').textContent =
+    a.pending.length===0 ? `All ${a.total} schools have submitted` : `of ${a.total} schools have not submitted yet`;
+  document.getElementById('attendHint').textContent =
+    `${a.done.length} submitted · ${a.pending.length} pending · ${when}`;
+}
+
+// ---- roster modal ----
+let RM_TAB='pending';
+function openRoster(){ RM_TAB='pending'; document.getElementById('rmSearch').value='';
+  document.querySelectorAll('#rmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t==='pending'));
+  renderRosterModal(); document.getElementById('rosterModal').classList.add('show'); }
+function closeRoster(){ document.getElementById('rosterModal').classList.remove('show'); }
+function renderRosterModal(){
+  const a=attendance();
+  const when = SELECTED_DATE==='all' ? 'any date' : fmtDate(SELECTED_DATE);
+  document.getElementById('rmSub').textContent =
+    `${when} · ${a.done.length} submitted, ${a.pending.length} pending of ${a.total}`;
+  const q=(document.getElementById('rmSearch').value||'').trim().toLowerCase();
+  let list = RM_TAB==='pending' ? a.pending : RM_TAB==='done' ? a.done : ROSTER;
+  list=[...list].sort((x,y)=>x.name.localeCompare(y.name));
+  if(q) list=list.filter(s=>s.name.toLowerCase().includes(q)||String(s.udise).includes(q));
+  const submitted=a.submitted;
+  const el=document.getElementById('rmList');
+  if(!list.length){ el.innerHTML=`<div class="slrow"><span class="ud">No schools match.</span></div>`; return; }
+  el.innerHTML=list.map(s=>{
+    const yes=submitted.has(String(s.udise).trim());
+    return `<div class="slrow"><div><div class="nm">${s.name}</div><div class="ud">UDISE ${s.udise}</div></div>
+      <span class="badge ${yes?'yes':'no'}">${yes?'Submitted':'Not submitted'}</span></div>`;
+  }).join('');
 }
 
 const ITEM_LABELS={cooking:'Cooking',cooked_meal:'Cooked meal',serving_video:'Serving (video)',plate:'Plate'};
@@ -741,6 +876,7 @@ function passFilter(row){
 
 function render(){
   renderKpis();
+  renderAttendance();
   const q=document.getElementById('queue');
   const list=dateRows().filter(passFilter);
   if(!list.length){ q.innerHTML=`<div class="card"><div class="chead"><div class="who"><div class="name" style="color:var(--grey)">Nothing here</div><div class="meta">No submissions match this filter.</div></div></div></div>`; return; }
@@ -804,6 +940,20 @@ document.getElementById('filters').addEventListener('click',(e)=>{
   b.classList.add('active'); FILTER=b.dataset.f; render();
 });
 
+// roster modal wiring
+const attendEl=document.getElementById('attend');
+attendEl.addEventListener('click',openRoster);
+attendEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openRoster(); }});
+document.getElementById('rmClose').addEventListener('click',closeRoster);
+document.getElementById('rosterModal').addEventListener('click',(e)=>{ if(e.target.id==='rosterModal') closeRoster(); });
+document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeRoster(); });
+document.getElementById('rmTabs').addEventListener('click',(e)=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#rmTabs button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); RM_TAB=b.dataset.t; renderRosterModal();
+});
+document.getElementById('rmSearch').addEventListener('input',renderRosterModal);
+
 function populateDates(){
   const dates=[...new Set(ROWS.map(r=>r.date).filter(Boolean))].sort().reverse();
   SELECTED_DATE = dates[0] || 'all';
@@ -819,7 +969,7 @@ function updateDateline(){
 }
 
 (async function init(){
-  ROWS=await loadData();
+  [ROWS, ROSTER] = await Promise.all([loadData(), loadRoster()]);
   if(window.__MDM_MODE==='live'){
     document.getElementById('mockBanner').textContent =
       'Live data — reading real submissions. Reviewer verdicts here are stored per-browser until the write-back store is enabled.';
