@@ -92,7 +92,20 @@ function fileFromUrl(url) {
  */
 export function parseDailyRow(row, cols, opts = {}) {
   const get = (field) => (cols[field] ? row[cols[field]] : undefined);
-  const udise = String(get('udise') || '').trim();
+  const schoolRaw = String(get('school') || '').trim();
+
+  // UDISE: prefer a dedicated column; otherwise extract the leading code from
+  // the school field (some forms merge them, e.g. "9240504102 NAVINAGAR-2 (PS)").
+  let udise = String(get('udise') || '').trim();
+  let name = schoolRaw;
+  if (!udise) {
+    const m = schoolRaw.match(/\b(\d{8,15})\b/);
+    if (m) {
+      udise = m[1];
+      name = schoolRaw.replace(m[1], '').replace(/^[\s\-–—:.,]+/, '').trim();
+    }
+  }
+
   const date = toISODate(get('date'));
   const submittedAt = toISODateTime(get('timestamp'));
   const baseline = opts.schoolLookup?.[udise] || {};
@@ -103,7 +116,7 @@ export function parseDailyRow(row, cols, opts = {}) {
     rowIndex: opts.rowIndex ?? null,
     school: {
       udise,
-      name: String(get('school') || baseline.name || '').trim(),
+      name: name || baseline.name || '',
       block: baseline.block || 'Hargaon',
       location: baseline.location || null,
       baseline,

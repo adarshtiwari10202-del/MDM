@@ -28,7 +28,7 @@ service-account JSON goes here — never in chat or code.
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | *(paste the entire .json key on one line)* |
 | `GEMINI_API_KEY` | your `AQ.` key |
 | `GEMINI_MODEL` | `gemini-3.6-flash` |
-| `DAILY_SHEET_ID` | `1oFGXJ5OxlGzjxm1eRsfDFGPVzQ_hf0oyKsI3bEOWsxI` |
+| `DAILY_SHEET_ID` | `1-qNEH9QOLm6N1Vb2_oWT0QK4Q4f7iy377i6Y2-hUQcM` |
 | `BASELINE_SHEET_ID` | `1yh2VUK_CUvXbCcr4RlPd7oYaQpx1GVigmlyFl59sA5k` |
 | `RESULTS_SHEET_ID` | `1OrcCX0KpKlVytBMND3kdSsSIK6_j393PQZD_13rWqsY` |
 | `DAILY_SHEET_TAB` | `Form Responses 1` |

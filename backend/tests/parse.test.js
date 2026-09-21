@@ -60,6 +60,20 @@ const HEADERS_V2 = HEADERS.slice(0, 9).concat(['फोटो: थाली म�
 const colsV2 = resolveColumns(HEADERS_V2);
 check('plate column resolves when present', !!colsV2.plate);
 
+// Merged UDISE + name in one column (new daily form has no separate UDISE column)
+const HEADERS_MERGED = ['Timestamp', 'विद्यालय का नाम / School Name', "आज की तारीख / Today's Date",
+  'Number of students who ate MDM today', 'Photo 1: Food being cooked in Kitchen',
+  'Photo 2: Cooked meal in the vessel', 'Video: Serving onto a plate', 'फोटो 3: खाने की प्लेट/ Plate with served food'];
+const colsM = resolveColumns(HEADERS_MERGED);
+check('merged form: no separate udise column', !colsM.udise);
+check('merged form: plate column resolves', !!colsM.plate);
+const rowM = {}; HEADERS_MERGED.forEach((h) => (rowM[h] = ''));
+rowM['विद्यालय का नाम / School Name'] = '9240504102 NAVINAGAR-2 (PS)';
+rowM["आज की तारीख / Today's Date"] = '9/18/2026';
+const subM = parseDailyRow(rowM, colsM, { rowIndex: 2 });
+check('udise extracted from school field', subM.school.udise === '9240504102');
+check('school name cleaned of udise', subM.school.name === 'NAVINAGAR-2 (PS)');
+
 // driveFileId url-shape coverage
 check('driveFileId /file/d/ shape', driveFileId('https://drive.google.com/file/d/ABC123abc_def/view') === 'ABC123abc_def');
 check('toISODate ISO passthrough', toISODate('2026-09-13') === '2026-09-13');
