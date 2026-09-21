@@ -88,17 +88,24 @@ export function sourceLabel(sub, slot) {
 }
 
 /**
- * Duplicate detection by content CONTENT hash (SHA-256 of raw bytes — never the
- * filename). seenHashes maps hash -> { id, label } of the FIRST slot that used it.
- *   • match in a DIFFERENT submission  -> f.duplicateOf = that source's label (red)
- *   • match within the SAME submission -> ignored (a school reusing one file
- *     across its own four slots is not reuse across days/schools).
+ * Duplicate detection by CONTENT hash (SHA-256 of raw bytes — never the
+ * filename). seenHashes maps hash -> { id, udise, date, label } of the FIRST
+ * slot that used it. A photo only counts as reused when the earlier copy came
+ * from a DIFFERENT school OR a DIFFERENT day — that is the real signal of
+ * recycled media. Two matches that are the same school on the same day are NOT
+ * flagged: that is one meal re-uploaded (e.g. the form submitted twice, or the
+ * same file dropped into two of the four slots), not a reused photo.
  */
 function markDuplicate(file, sub, slot, seenHashes) {
   if (!seenHashes || !file.hash) return;
+  const udise = sub.school?.udise || '';
+  const date = sub.date || '';
   const prev = seenHashes.get(file.hash);
-  if (prev && prev.id !== sub.id) file.duplicateOf = prev.label;
-  else if (!prev) seenHashes.set(file.hash, { id: sub.id, label: sourceLabel(sub, slot) });
+  if (prev && prev.id !== sub.id) {
+    if (prev.udise !== udise || prev.date !== date) file.duplicateOf = prev.label;
+  } else if (!prev) {
+    seenHashes.set(file.hash, { id: sub.id, udise, date, label: sourceLabel(sub, slot) });
+  }
 }
 
 /** Merge the AI-extracted stamp (GPS + time) into the file's rule inputs. */

@@ -24,18 +24,24 @@ async function main() {
   rows.sort((a, b) => rn(a.id) - rn(b.id));
 
   // Recompute duplicates by content hash (SHA-256 of raw bytes — never the
-  // filename): a match in a DIFFERENT submission is real reuse (red); the same
-  // file reused across one submission's own slots is ignored. duplicateOf holds
-  // a human-readable "who/when/which photo" descriptor of the source.
-  const seen = new Map(); // hash -> { id, label }
+  // filename): a photo is reused only when the earlier copy came from a
+  // DIFFERENT school OR a DIFFERENT day (red). The same school on the same day
+  // is one meal re-uploaded, not recycled media, so it is not flagged.
+  // duplicateOf holds a human-readable "who/when/which photo" descriptor.
+  const seen = new Map(); // hash -> { id, udise, date, label }
   for (const r of rows) {
+    const udise = r.school?.udise || '';
+    const date = r.date || '';
     for (const k of ITEMS) {
       const f = r.files?.[k];
       if (!f || f.missing || !f.hash) continue;
       delete f.duplicateOf; delete f.repeatedInSubmission; // clear stale marks
       const prev = seen.get(f.hash);
-      if (prev && prev.id !== r.id) f.duplicateOf = prev.label;
-      else if (!prev) seen.set(f.hash, { id: r.id, label: sourceLabel(r, k) });
+      if (prev && prev.id !== r.id) {
+        if (prev.udise !== udise || prev.date !== date) f.duplicateOf = prev.label;
+      } else if (!prev) {
+        seen.set(f.hash, { id: r.id, udise, date, label: sourceLabel(r, k) });
+      }
     }
     const submission = {
       school: r.school,

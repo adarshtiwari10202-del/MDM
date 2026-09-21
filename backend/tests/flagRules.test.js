@@ -1,5 +1,6 @@
 // Minimal zero-dependency test runner for the flag engine.
 import { evaluateSubmission } from '../flagRules.js';
+import { processAll } from '../pipeline.js';
 import { SAMPLE_SUBMISSIONS } from '../sampleData/submissions.js';
 
 let pass = 0, fail = 0;
@@ -103,6 +104,26 @@ const cross = evaluateSubmission(base(['rice'], {
 }));
 check('photo reused from another submission → duplicate_media (red)', codes(cross).includes('duplicate_media'));
 check('duplicate_media message names the source', cross.flags.find((f) => f.code === 'duplicate_media').message.includes('9240500704'));
+
+// --- pipeline duplicate scope: only cross-school/cross-day reuse flags ---
+const dupSub = (id, date) => ({
+  id, school: { udise: 'U1', name: 'Test School' }, date, menu: ['rice'],
+  files: {
+    cooking: { hash: 'k1', ai: { cooking_in_progress: true } },
+    cooked_meal: { hash: 'k2', ai: { food_present: true, dishes_visible: ['rice'] } },
+    serving_video: { hash: 'k3', ai: { food_present: true } },
+    plate: { hash: 'k4', ai: { scene_type: 'served_plate', dishes_visible: ['rice'] } },
+  },
+});
+const sameDay = await processAll([dupSub('r1', '2026-09-19'), dupSub('r2', '2026-09-19')]);
+check('same school + same day identical photos → NOT flagged', sameDay.every((r) => !codes(r).includes('duplicate_media')));
+
+const otherSchool = { ...dupSub('r3', '2026-09-19'), school: { udise: 'U2', name: 'Other School' } };
+const crossSchool = await processAll([dupSub('r1', '2026-09-19'), otherSchool]);
+check('same photos across TWO schools → duplicate_media (red)', crossSchool.some((r) => codes(r).includes('duplicate_media')));
+
+const crossDay = await processAll([dupSub('r1', '2026-09-19'), dupSub('r3', '2026-09-22')]);
+check('same photos on a DIFFERENT day → duplicate_media (red)', crossDay.some((r) => codes(r).includes('duplicate_media')));
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
