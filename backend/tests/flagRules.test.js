@@ -21,10 +21,10 @@ check('S-0002 flags missing menu item (sabzi)', codes(r2).includes('menu_missing
 check('S-0002 severity red (menu_missing)', r2.severity === 'red');
 
 const r3 = evaluateSubmission(byId('S-0003'));
-check('S-0003 flags staged burst', codes(r3).includes('staged_burst'));
 check('S-0003 flags geo mismatch', codes(r3).includes('geo_mismatch'));
 check('S-0003 flags duplicate media', codes(r3).includes('duplicate_media'));
-check('S-0003 flags outside meal window (09:50)', codes(r3).includes('outside_meal_window'));
+check('S-0003 severity red', r3.severity === 'red');
+check('S-0003 all flags are red', r3.flags.every((f) => f.severity === 'red'));
 
 const r4 = evaluateSubmission(byId('S-0004'));
 check('S-0004 flags missing video item', codes(r4).includes('items_missing'));
@@ -85,22 +85,24 @@ const pu = evaluateSubmission(base(['rice', 'dal', 'sabzi'], {
 }));
 check('unclear plate dish does NOT flag plate_menu_missing', !codes(pu).includes('plate_menu_missing'));
 
-// --- duplicate scope: within-submission = amber; cross-submission = red ---
+// --- duplicate scope: only cross-submission reuse flags (red); a file reused
+//     across one submission's own slots is NOT flagged (amber removed) ---
 const within = evaluateSubmission(base(['rice'], {
-  cooking: { hash: 'H', repeatedInSubmission: false, ai: { cooking_in_progress: true } },
-  cooked_meal: { hash: 'H', repeatedInSubmission: true, ai: { food_present: true, dishes_visible: ['rice'] } },
+  cooking: { hash: 'H', ai: { cooking_in_progress: true } },
+  cooked_meal: { hash: 'H', ai: { food_present: true, dishes_visible: ['rice'] } },
   serving_video: { ai: { food_present: true } },
   plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'] } },
 }));
-check('same photo in two slots → repeated_photo (amber), not duplicate_media', codes(within).includes('repeated_photo') && !codes(within).includes('duplicate_media'));
+check('same photo in two slots → not flagged (no duplicate_media)', !codes(within).includes('duplicate_media'));
 
 const cross = evaluateSubmission(base(['rice'], {
   cooking: { ai: { cooking_in_progress: true } },
-  cooked_meal: { duplicateOf: '9240500704_2026-09-18_r51', ai: { food_present: true, dishes_visible: ['rice'] } },
+  cooked_meal: { duplicateOf: 'PARSEHRA NATH (UPS) [9240500704] on 2026-09-18 (Cooked-meal)', ai: { food_present: true, dishes_visible: ['rice'] } },
   serving_video: { ai: { food_present: true } },
   plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'] } },
 }));
 check('photo reused from another submission → duplicate_media (red)', codes(cross).includes('duplicate_media'));
+check('duplicate_media message names the source', cross.flags.find((f) => f.code === 'duplicate_media').message.includes('9240500704'));
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

@@ -144,7 +144,6 @@
         <button data-f="all" class="active">All</button>
         <button data-f="pending">Awaiting review</button>
         <button data-f="red">Red</button>
-        <button data-f="amber">Amber</button>
       </div>
     </div>
 
@@ -243,7 +242,7 @@ const MOCK_DATA = [
         "url": "sample://plate-3.jpg",
         "uploadedAt": "2026-09-13T09:50:50+05:30",
         "hash": "c4",
-        "duplicateOf": "S-0003 (2026-09-11)",
+        "duplicateOf": "UPS Laharpur Road [09250100309] on 2026-09-11 (Plate)",
         "ai": {
           "scene_type": "served_plate",
           "food_present": true,
@@ -260,18 +259,6 @@ const MOCK_DATA = [
     },
     "flags": [
       {
-        "code": "outside_meal_window",
-        "severity": "amber",
-        "message": "Submitted outside meal window (09:50)",
-        "stage": "rule"
-      },
-      {
-        "code": "staged_burst",
-        "severity": "amber",
-        "message": "All media uploaded within 50s — possible staged burst",
-        "stage": "rule"
-      },
-      {
         "code": "geo_mismatch",
         "severity": "red",
         "message": "cooking taken 5697m from school (limit 150m)",
@@ -286,19 +273,19 @@ const MOCK_DATA = [
       {
         "code": "duplicate_media",
         "severity": "red",
-        "message": "plate photo is reused from an earlier submission (S-0003 (2026-09-11))",
+        "message": "Plate photo is identical to UPS Laharpur Road [09250100309] on 2026-09-11 (Plate)",
         "stage": "rule"
       }
     ],
     "severity": "red",
     "severityRank": 3,
-    "score": 320,
-    "summary": "3 red, 2 amber",
+    "score": 3,
+    "summary": "3 red flags",
     "menuLabel": "tehri, kadhi",
     "reviewer_verdict": null,
     "reviewer_comment": "",
     "reviewer_at": null,
-    "processedAt": "2026-09-21T08:25:27.711Z"
+    "processedAt": "2026-09-21T08:43:58.930Z"
   },
   {
     "id": "S-0002",
@@ -410,13 +397,13 @@ const MOCK_DATA = [
     ],
     "severity": "red",
     "severityRank": 3,
-    "score": 200,
-    "summary": "2 red, 0 amber",
+    "score": 2,
+    "summary": "2 red flags",
     "menuLabel": "rice, dal, sabzi",
     "reviewer_verdict": null,
     "reviewer_comment": "",
     "reviewer_at": null,
-    "processedAt": "2026-09-21T08:25:27.710Z"
+    "processedAt": "2026-09-21T08:43:58.930Z"
   },
   {
     "id": "S-0004",
@@ -505,13 +492,13 @@ const MOCK_DATA = [
     ],
     "severity": "red",
     "severityRank": 3,
-    "score": 100,
-    "summary": "1 red, 0 amber",
+    "score": 1,
+    "summary": "1 red flag",
     "menuLabel": "roti, sabzi",
     "reviewer_verdict": null,
     "reviewer_comment": "",
     "reviewer_at": null,
-    "processedAt": "2026-09-21T08:25:27.711Z"
+    "processedAt": "2026-09-21T08:43:58.930Z"
   },
   {
     "id": "S-0001",
@@ -621,12 +608,12 @@ const MOCK_DATA = [
     "severity": "ok",
     "severityRank": 0,
     "score": 0,
-    "summary": "No automated flags",
+    "summary": "No flags",
     "menuLabel": "rice, dal, sabzi",
     "reviewer_verdict": null,
     "reviewer_comment": "",
     "reviewer_at": null,
-    "processedAt": "2026-09-21T08:25:27.710Z"
+    "processedAt": "2026-09-21T08:43:58.929Z"
   }
 ];
 
@@ -669,13 +656,11 @@ function renderKpis(){
   const total=rows.length;
   const unique=uniqueSubmissions(rows);
   const red=rows.filter(r=>r.severity==='red').length;
-  const amber=rows.filter(r=>r.severity==='amber').length;
   const pending=rows.filter(r=>!verdictOf(r).verdict).length;
   const compliance=total?Math.round((rows.filter(r=>r.severity==='ok').length/total)*100):0;
   const cards=[
     {n:unique,l:'Unique submissions',cls:'yel'},
     {n:red,l:'Red flags',cls:'red'},
-    {n:amber,l:'Amber flags',cls:'amber'},
     {n:pending,l:'Awaiting review',cls:''},
     {n:compliance+'%',l:'Clean (no flags)',cls:'teal'},
   ];
@@ -742,8 +727,8 @@ function severityChip(row){
   const v=verdictOf(row);
   if(v.verdict==='acceptable') return `<span class="chip verdict-ok">Verdict: Acceptable</span>`;
   if(v.verdict==='not_acceptable') return `<span class="chip verdict-no">Verdict: Not acceptable</span>`;
-  const map={red:'red',amber:'amber',ok:'ok',info:'info'};
-  const label={red:'Red',amber:'Amber',ok:'Clean',info:'Info'}[row.severity]||row.severity;
+  const map={red:'red',ok:'ok',info:'info'};
+  const label={red:'Red',ok:'Clean',info:'Info'}[row.severity]||row.severity;
   return `<span class="chip ${map[row.severity]||'info'}">${label} · ${row.summary}</span>`;
 }
 
@@ -751,7 +736,6 @@ function passFilter(row){
   const v=verdictOf(row);
   if(FILTER==='pending') return !v.verdict;
   if(FILTER==='red') return row.severity==='red';
-  if(FILTER==='amber') return row.severity==='amber';
   return true;
 }
 

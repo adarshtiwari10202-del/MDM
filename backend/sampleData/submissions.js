@@ -52,7 +52,7 @@ export const SAMPLE_SUBMISSIONS = [
     },
   },
 
-  // 3) Staged burst + geo mismatch + duplicate reused photo.
+  // 3) Geo mismatch + duplicate reused photo (both red).
   {
     id: 'S-0003', school: SCHOOLS['09250100309'], date: '2026-09-13',
     menu: ['tehri', 'kadhi'], headcountReported: 140, submittedAt: '2026-09-13T09:50:00+05:30',
@@ -63,7 +63,7 @@ export const SAMPLE_SUBMISSIONS = [
         ai: ai({ scene_type: 'cooked_meal_in_vessel', food_present: true, dishes_visible: ['tehri', 'kadhi'], menu_items_present: { tehri: true, kadhi: true } }) },
       serving_video: { url: 'sample://serve-3.mp4', uploadedAt: '2026-09-13T09:50:35+05:30', hash: 'c3',
         ai: ai({ scene_type: 'serving', food_present: true }) },
-      plate: { url: 'sample://plate-3.jpg', uploadedAt: '2026-09-13T09:50:50+05:30', hash: 'c4', duplicateOf: 'S-0003 (2026-09-11)',
+      plate: { url: 'sample://plate-3.jpg', uploadedAt: '2026-09-13T09:50:50+05:30', hash: 'c4', duplicateOf: 'UPS Laharpur Road [09250100309] on 2026-09-11 (Plate)',
         ai: ai({ scene_type: 'served_plate', food_present: true, dishes_visible: ['tehri', 'kadhi'], plate_fullness: 'adequate' }) },
     },
   },

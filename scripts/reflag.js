@@ -9,6 +9,7 @@
 // ============================================================
 import { readResults, clearResults, appendResults } from '../backend/store.js';
 import { evaluateSubmission } from '../backend/flagRules.js';
+import { sourceLabel } from '../backend/pipeline.js';
 import { getMenu } from '../backend/menu.js';
 
 const ITEMS = ['cooking', 'cooked_meal', 'serving_video', 'plate'];
@@ -22,18 +23,19 @@ async function main() {
   // Deterministic order (matches processing order) so duplicate attribution is stable.
   rows.sort((a, b) => rn(a.id) - rn(b.id));
 
-  // Recompute duplicates by content hash: cross-submission = reuse (red),
-  // same-submission = repeated slot (amber).
-  const seen = new Map();
+  // Recompute duplicates by content hash (SHA-256 of raw bytes — never the
+  // filename): a match in a DIFFERENT submission is real reuse (red); the same
+  // file reused across one submission's own slots is ignored. duplicateOf holds
+  // a human-readable "who/when/which photo" descriptor of the source.
+  const seen = new Map(); // hash -> { id, label }
   for (const r of rows) {
     for (const k of ITEMS) {
       const f = r.files?.[k];
       if (!f || f.missing || !f.hash) continue;
       delete f.duplicateOf; delete f.repeatedInSubmission; // clear stale marks
       const prev = seen.get(f.hash);
-      if (prev && prev !== r.id) f.duplicateOf = prev;
-      else if (prev === r.id) f.repeatedInSubmission = true;
-      else seen.set(f.hash, r.id);
+      if (prev && prev.id !== r.id) f.duplicateOf = prev.label;
+      else if (!prev) seen.set(f.hash, { id: r.id, label: sourceLabel(r, k) });
     }
     const submission = {
       school: r.school,
@@ -50,9 +52,8 @@ async function main() {
   await appendResults(rows);
 
   const red = rows.filter((r) => r.severity === 'red').length;
-  const amber = rows.filter((r) => r.severity === 'amber').length;
   const ok = rows.filter((r) => r.severity === 'ok').length;
-  console.log(`[reflag] rewrote ${rows.length} rows — ${red} red, ${amber} amber, ${ok} clean`);
+  console.log(`[reflag] rewrote ${rows.length} rows — ${red} red, ${ok} clean`);
 }
 
 main().catch((e) => { console.error('[reflag] FAILED:', e); process.exit(1); });

@@ -102,40 +102,9 @@ export function evaluateSubmission(submission, config = {}) {
     );
   }
 
-  // --- Rule check 2: timestamp within meal window ---
-  const times = cfg.requiredItems
-    .map((k) => files[k]?.uploadedAt)
-    .filter(Boolean);
-  const firstTime = times.length ? times.slice().sort()[0] : submission.submittedAt;
-  const mod = minuteOfDay(firstTime);
-  if (mod != null) {
-    if (mod < cfg.mealWindow.startMin || mod > cfg.mealWindow.endMin) {
-      flags.push(
-        flag(
-          'outside_meal_window',
-          'amber',
-          `Submitted outside meal window (${fmtMin(mod)})`,
-          'rule'
-        )
-      );
-    }
-  }
-
-  // --- Rule check 3: timing spread (staged burst) ---
-  if (times.length >= 2) {
-    const secs = times.map((t) => new Date(t).getTime() / 1000);
-    const spread = Math.max(...secs) - Math.min(...secs);
-    if (spread <= cfg.burstThresholdSeconds) {
-      flags.push(
-        flag(
-          'staged_burst',
-          'amber',
-          `All media uploaded within ${Math.round(spread)}s — possible staged burst`,
-          'rule'
-        )
-      );
-    }
-  }
+  // (Amber-severity checks — meal-window timing, staged-burst — were removed:
+  //  the system now surfaces only RED flags. The AI readings + stamp times are
+  //  still stored, so these can be reintroduced later and re-flagged if wanted.)
 
   // --- Rule check 4a: geo match to known school location ---
   // Locations come from the GPS stamp the AI reads off each photo, merged
@@ -185,22 +154,18 @@ export function evaluateSubmission(submission, config = {}) {
     }
   }
 
-  // --- Hash check: reused media ---
-  // duplicateOf = matches a DIFFERENT submission (another day/school) → real
-  // reuse, red. repeatedInSubmission = the same photo used in two slots of THIS
-  // submission → a form-quality issue, amber (not meal fraud).
-  let repeatedInSub = false;
+  // --- Hash check: reused media (identical image CONTENT, by SHA-256) ---
+  // Fires only when a photo's byte content matches one from a DIFFERENT
+  // submission (another day/school) = genuine reuse. Same file in two slots of
+  // the same submission is ignored. Filename is never used — only pixels.
+  // f.duplicateOf carries a human-readable "who/when/which photo" descriptor.
   for (const k of cfg.requiredItems) {
     const f = files[k];
     if (f?.duplicateOf) {
       flags.push(
-        flag('duplicate_media', 'red', `${k} photo is reused from an earlier submission (${f.duplicateOf})`, 'rule')
+        flag('duplicate_media', 'red', `${itemName(k)} photo is identical to ${f.duplicateOf}`, 'rule')
       );
     }
-    if (f?.repeatedInSubmission) repeatedInSub = true;
-  }
-  if (repeatedInSub) {
-    flags.push(flag('repeated_photo', 'amber', 'Same photo used in more than one of the four slots', 'rule'));
   }
 
   // --- AI check: menu compliance ---
@@ -260,34 +225,24 @@ export function evaluateSubmission(submission, config = {}) {
     }
   }
 
-  // --- AI scene checks ---
+  // --- AI scene check: food present ---
   const cooked = files.cooked_meal?.ai;
   if (cooked && cooked.food_present === false) {
     flags.push(flag('no_food', 'red', 'No food visible in the cooked-meal photo', 'ai'));
   }
-  const cooking = files.cooking?.ai;
-  if (cooking && cooking.cooking_in_progress === false) {
-    flags.push(
-      flag('no_cooking', 'amber', 'Cooking not visibly in progress in cooking photo', 'ai')
-    );
-  }
 
-  // --- Roll up ---
-  const severityRank = flags.reduce((m, f) => Math.max(m, SEVERITY[f.severity] || 0), 0);
-  const severity = SEVERITY_NAME[severityRank];
-  // Queue score: reds dominate, ambers add a little. Higher = review sooner.
-  const reds = flags.filter((f) => f.severity === 'red').length;
-  const ambers = flags.filter((f) => f.severity === 'amber').length;
-  const score = reds * 100 + ambers * 10;
-  const summary = flags.length
-    ? `${reds} red, ${ambers} amber`
-    : 'No automated flags';
+  // --- Roll up (RED-only model) ---
+  // Every flag is red; a school is ranked by how many red flags it has.
+  const reds = flags.length;
+  const severity = reds > 0 ? 'red' : 'ok';
+  const severityRank = reds > 0 ? SEVERITY.red : SEVERITY.ok;
+  const score = reds; // queue sorts by number of red flags, highest first
+  const summary = reds ? `${reds} red flag${reds > 1 ? 's' : ''}` : 'No flags';
 
   return { flags, severity, severityRank, score, summary };
 }
 
-function fmtMin(m) {
-  const h = Math.floor(m / 60);
-  const mm = String(m % 60).padStart(2, '0');
-  return `${String(h).padStart(2, '0')}:${mm}`;
+/** Readable name for a file slot, used in flag messages. */
+function itemName(k) {
+  return { cooking: 'Cooking', cooked_meal: 'Cooked-meal', serving_video: 'Serving-video', plate: 'Plate' }[k] || k;
 }

@@ -69,18 +69,36 @@ export function parseStampDateTime(s) {
   return isNaN(dt) ? null : dt.toISOString();
 }
 
+/** Readable name for a file slot, used in duplicate descriptors. */
+const SLOT_LABEL = {
+  cooking: 'Cooking',
+  cooked_meal: 'Cooked-meal',
+  serving_video: 'Serving-video',
+  plate: 'Plate',
+};
+
+/** Human-readable "who/when/which photo" descriptor for a submission's slot,
+ *  e.g. "PARSEHRA NATH (UPS) [9240500704] on 2026-09-18 (Cooked-meal)". */
+export function sourceLabel(sub, slot) {
+  const school = sub.school || {};
+  const name = school.name || school.udise || 'unknown school';
+  const udise = school.udise ? ` [${school.udise}]` : '';
+  const date = sub.date ? ` on ${sub.date}` : '';
+  return `${name}${udise}${date} (${SLOT_LABEL[slot] || slot})`;
+}
+
 /**
- * Duplicate detection by content hash. seenHashes maps hash -> the FIRST
- * submission id that used it.
- *   • match in a DIFFERENT submission  -> f.duplicateOf (real reuse, red)
- *   • match within the SAME submission -> f.repeatedInSubmission (amber)
+ * Duplicate detection by content CONTENT hash (SHA-256 of raw bytes — never the
+ * filename). seenHashes maps hash -> { id, label } of the FIRST slot that used it.
+ *   • match in a DIFFERENT submission  -> f.duplicateOf = that source's label (red)
+ *   • match within the SAME submission -> ignored (a school reusing one file
+ *     across its own four slots is not reuse across days/schools).
  */
-function markDuplicate(file, subId, seenHashes) {
+function markDuplicate(file, sub, slot, seenHashes) {
   if (!seenHashes || !file.hash) return;
   const prev = seenHashes.get(file.hash);
-  if (prev && prev !== subId) file.duplicateOf = prev;
-  else if (prev === subId) file.repeatedInSubmission = true;
-  else seenHashes.set(file.hash, subId);
+  if (prev && prev.id !== sub.id) file.duplicateOf = prev.label;
+  else if (!prev) seenHashes.set(file.hash, { id: sub.id, label: sourceLabel(sub, slot) });
 }
 
 /** Merge the AI-extracted stamp (GPS + time) into the file's rule inputs. */
@@ -115,7 +133,7 @@ export async function processSubmission(sub, ctx = {}) {
       try {
         const buf = await fetchDriveFile(f.fileId);
         f.hash = crypto.createHash('sha256').update(buf).digest('hex');
-        markDuplicate(f, sub.id, ctx.seenHashes);
+        markDuplicate(f, sub, k, ctx.seenHashes);
         const stage = ITEM_STAGE[k];
         if (k === 'serving_video') {
           const tmp = path.join(os.tmpdir(), `mdm-${f.hash.slice(0, 12)}.mp4`);
@@ -135,7 +153,7 @@ export async function processSubmission(sub, ctx = {}) {
     for (const k of ITEMS) {
       const f = sub.files[k];
       if (!f || f.missing) continue;
-      if (f.hash) markDuplicate(f, sub.id, ctx.seenHashes);
+      if (f.hash) markDuplicate(f, sub, k, ctx.seenHashes);
       mergeStamp(f);
     }
   }
