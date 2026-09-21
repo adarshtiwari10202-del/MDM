@@ -66,5 +66,41 @@ const geo = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['rice']
 })));
 check('photos far apart → geo_inconsistent', codes(geo).includes('geo_inconsistent'));
 
+// --- plate_menu_missing: dish cooked in pot but clearly absent from the plate ---
+const pm = evaluateSubmission(base(['rice', 'dal', 'sabzi'], {
+  cooking: { ai: { scene_type: 'cooking', cooking_in_progress: true } },
+  cooked_meal: { ai: { food_present: true, dishes_visible: ['rice', 'dal', 'sabzi'], menu_items_present: { rice: true, dal: true, sabzi: true } } },
+  serving_video: { ai: { food_present: true } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice', 'dal'], menu_items_present: { rice: true, dal: true, sabzi: false } } },
+}));
+check('plate_menu_missing when sabzi absent from plate', codes(pm).includes('plate_menu_missing'));
+check('menu_missing NOT raised (sabzi was in the pot)', !codes(pm).includes('menu_missing'));
+
+// unclear on the plate must NOT trigger plate_menu_missing
+const pu = evaluateSubmission(base(['rice', 'dal', 'sabzi'], {
+  cooking: { ai: { cooking_in_progress: true } },
+  cooked_meal: { ai: { food_present: true, dishes_visible: ['rice', 'dal', 'sabzi'], menu_items_present: { rice: true, dal: true, sabzi: true } } },
+  serving_video: { ai: { food_present: true } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice', 'dal'], menu_items_present: { rice: true, dal: true } } }, // sabzi omitted = unclear
+}));
+check('unclear plate dish does NOT flag plate_menu_missing', !codes(pu).includes('plate_menu_missing'));
+
+// --- duplicate scope: within-submission = amber; cross-submission = red ---
+const within = evaluateSubmission(base(['rice'], {
+  cooking: { hash: 'H', repeatedInSubmission: false, ai: { cooking_in_progress: true } },
+  cooked_meal: { hash: 'H', repeatedInSubmission: true, ai: { food_present: true, dishes_visible: ['rice'] } },
+  serving_video: { ai: { food_present: true } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'] } },
+}));
+check('same photo in two slots → repeated_photo (amber), not duplicate_media', codes(within).includes('repeated_photo') && !codes(within).includes('duplicate_media'));
+
+const cross = evaluateSubmission(base(['rice'], {
+  cooking: { ai: { cooking_in_progress: true } },
+  cooked_meal: { duplicateOf: '9240500704_2026-09-18_r51', ai: { food_present: true, dishes_visible: ['rice'] } },
+  serving_video: { ai: { food_present: true } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'] } },
+}));
+check('photo reused from another submission → duplicate_media (red)', codes(cross).includes('duplicate_media'));
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

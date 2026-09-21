@@ -69,6 +69,20 @@ export function parseStampDateTime(s) {
   return isNaN(dt) ? null : dt.toISOString();
 }
 
+/**
+ * Duplicate detection by content hash. seenHashes maps hash -> the FIRST
+ * submission id that used it.
+ *   • match in a DIFFERENT submission  -> f.duplicateOf (real reuse, red)
+ *   • match within the SAME submission -> f.repeatedInSubmission (amber)
+ */
+function markDuplicate(file, subId, seenHashes) {
+  if (!seenHashes || !file.hash) return;
+  const prev = seenHashes.get(file.hash);
+  if (prev && prev !== subId) file.duplicateOf = prev;
+  else if (prev === subId) file.repeatedInSubmission = true;
+  else seenHashes.set(file.hash, subId);
+}
+
 /** Merge the AI-extracted stamp (GPS + time) into the file's rule inputs. */
 function mergeStamp(file) {
   const ai = file.ai;
@@ -101,10 +115,7 @@ export async function processSubmission(sub, ctx = {}) {
       try {
         const buf = await fetchDriveFile(f.fileId);
         f.hash = crypto.createHash('sha256').update(buf).digest('hex');
-        if (ctx.seenHashes) {
-          if (ctx.seenHashes.has(f.hash)) f.duplicateOf = 'an earlier submission';
-          else ctx.seenHashes.set(f.hash, sub.id);
-        }
+        markDuplicate(f, sub.id, ctx.seenHashes);
         const stage = ITEM_STAGE[k];
         if (k === 'serving_video') {
           const tmp = path.join(os.tmpdir(), `mdm-${f.hash.slice(0, 12)}.mp4`);
@@ -124,10 +135,7 @@ export async function processSubmission(sub, ctx = {}) {
     for (const k of ITEMS) {
       const f = sub.files[k];
       if (!f || f.missing) continue;
-      if (ctx.seenHashes && f.hash) {
-        if (ctx.seenHashes.has(f.hash)) f.duplicateOf = f.duplicateOf || 'an earlier submission';
-        else ctx.seenHashes.set(f.hash, sub.id);
-      }
+      if (f.hash) markDuplicate(f, sub.id, ctx.seenHashes);
       mergeStamp(f);
     }
   }

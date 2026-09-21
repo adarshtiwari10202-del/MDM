@@ -185,57 +185,78 @@ export function evaluateSubmission(submission, config = {}) {
     }
   }
 
-  // --- Hash check: duplicate / reused media ---
+  // --- Hash check: reused media ---
+  // duplicateOf = matches a DIFFERENT submission (another day/school) → real
+  // reuse, red. repeatedInSubmission = the same photo used in two slots of THIS
+  // submission → a form-quality issue, amber (not meal fraud).
+  let repeatedInSub = false;
   for (const k of cfg.requiredItems) {
     const f = files[k];
     if (f?.duplicateOf) {
       flags.push(
-        flag(
-          'duplicate_media',
-          'red',
-          `${k} is a duplicate of submission ${f.duplicateOf}`,
-          'rule'
-        )
+        flag('duplicate_media', 'red', `${k} photo is reused from an earlier submission (${f.duplicateOf})`, 'rule')
       );
     }
+    if (f?.repeatedInSubmission) repeatedInSub = true;
+  }
+  if (repeatedInSub) {
+    flags.push(flag('repeated_photo', 'amber', 'Same photo used in more than one of the four slots', 'rule'));
   }
 
   // --- AI check: menu compliance ---
-  // Gather all dishes the AI saw in the meal + serving frames.
-  const seen = new Set();
-  for (const k of ['cooked_meal', 'plate']) {
-    const ai = files[k]?.ai;
-    if (!ai) continue;
-    (ai.dishes_visible || []).forEach((d) => seen.add(normDish(d)));
-    if (ai.menu_items_present) {
-      for (const [item, present] of Object.entries(ai.menu_items_present)) {
-        if (present) seen.add(normDish(item));
+  const itemLabel = (item) => (typeof item === 'string' ? item : (item.anyOf || []).join('/'));
+  // Set of dishes visibly present across the given stages (+ category members).
+  const gatherSeen = (keys) => {
+    const seen = new Set();
+    for (const k of keys) {
+      const ai = files[k]?.ai;
+      if (!ai) continue;
+      (ai.dishes_visible || []).forEach((d) => seen.add(normDish(d)));
+      if (ai.menu_items_present) {
+        for (const [item, present] of Object.entries(ai.menu_items_present)) {
+          if (present) seen.add(normDish(item));
+        }
       }
     }
-  }
-  // A dish counts as seen if it (or a category member) appears.
-  const dishSeen = (nd) => {
+    return seen;
+  };
+  const dishSeenIn = (seen, nd) => {
     if (seen.has(nd)) return true;
     const cats = DISH_CATEGORIES[nd];
     return !!(cats && cats.some((m) => seen.has(m)));
   };
-  const itemPresent = (item) => {
-    if (typeof item === 'string') return dishSeen(normDish(item));
-    if (item && item.anyOf) return item.anyOf.some((x) => dishSeen(normDish(x)));
-    return true;
-  };
-  const itemLabel = (item) => (typeof item === 'string' ? item : (item.anyOf || []).join('/'));
+
+  // menu_missing (red): a prescribed dish wasn't cooked at all (pot + plate both lack it).
   if (menu.length) {
-    const missingMenu = menu.filter((it) => !itemPresent(it)).map(itemLabel);
-    if (missingMenu.length) {
-      flags.push(
-        flag(
-          'menu_missing',
-          'red',
-          `Prescribed dish not visible: ${missingMenu.join(', ')}`,
-          'ai'
-        )
-      );
+    const seenAll = gatherSeen(['cooked_meal', 'plate']);
+    const present = (item) => {
+      const names = typeof item === 'string' ? [item] : (item.anyOf || []);
+      return names.some((n) => dishSeenIn(seenAll, normDish(n)));
+    };
+    const missing = menu.filter((it) => !present(it)).map(itemLabel);
+    if (missing.length) {
+      flags.push(flag('menu_missing', 'red', `Prescribed dish not visible anywhere: ${missing.join(', ')}`, 'ai'));
+    }
+  }
+
+  // plate_menu_missing (red): a prescribed dish is CLEARLY absent from the plate
+  // (served-plate photo present; only clear absences flag — "unclear" does not).
+  const plateAi = files.plate?.ai;
+  if (menu.length && plateAi && !files.plate?.missing) {
+    const seenPlate = gatherSeen(['plate']);
+    const mip = plateAi.menu_items_present || {};
+    const clearlyAbsent = (name) => {
+      const nd = normDish(name);
+      if (dishSeenIn(seenPlate, nd)) return false; // visibly present
+      return mip[nd] === false;                    // AI marked it absent (not unclear)
+    };
+    const itemAbsent = (item) => {
+      const names = typeof item === 'string' ? [item] : (item.anyOf || []);
+      return names.length > 0 && names.every(clearlyAbsent);
+    };
+    const missingOnPlate = menu.filter(itemAbsent).map(itemLabel);
+    if (missingOnPlate.length) {
+      flags.push(flag('plate_menu_missing', 'red', `Prescribed dish not served on the plate: ${missingOnPlate.join(', ')}`, 'ai'));
     }
   }
 

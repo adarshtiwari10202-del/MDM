@@ -39,6 +39,10 @@
   .kpi .n.yel{color:var(--navy);border-left:4px solid var(--yel);padding-left:8px;margin-left:-2px}
   .kpi .n.red{color:var(--red)} .kpi .n.amber{color:var(--amber)} .kpi .n.teal{color:var(--teal)}
 
+  .datebar{display:flex;align-items:center;gap:10px;margin:2px 0 16px;flex-wrap:wrap}
+  .datebar label{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);font-weight:700}
+  .datebar select{font:inherit;font-size:14px;padding:7px 12px;border:1px solid var(--hair);border-radius:8px;background:#fff;color:var(--ink)}
+  .datesum{color:var(--grey);font-size:13px}
   .section-h{display:flex;align-items:center;justify-content:space-between;margin:6px 0 12px}
   .section-h h2{font-size:15px;margin:0;text-transform:uppercase;letter-spacing:.6px;color:var(--grey)}
   .filters{display:flex;gap:6px}
@@ -124,6 +128,12 @@
     <div class="mock-banner" id="mockBanner">
       Preview mode — showing sample submissions. Reviewer verdicts are saved in this browser only.
       Live mode reads real submissions and writes verdicts back to the results store.
+    </div>
+
+    <div class="datebar">
+      <label for="dateSel">Date</label>
+      <select id="dateSel"></select>
+      <span id="dateSummary" class="datesum"></span>
     </div>
 
     <div class="kpis" id="kpis"></div>
@@ -276,7 +286,7 @@ const MOCK_DATA = [
       {
         "code": "duplicate_media",
         "severity": "red",
-        "message": "plate is a duplicate of submission S-0003 (2026-09-11)",
+        "message": "plate photo is reused from an earlier submission (S-0003 (2026-09-11))",
         "stage": "rule"
       }
     ],
@@ -288,7 +298,7 @@ const MOCK_DATA = [
     "reviewer_verdict": null,
     "reviewer_comment": "",
     "reviewer_at": null,
-    "processedAt": "2026-09-15T03:40:44.752Z"
+    "processedAt": "2026-09-21T08:25:27.711Z"
   },
   {
     "id": "S-0002",
@@ -388,19 +398,25 @@ const MOCK_DATA = [
       {
         "code": "menu_missing",
         "severity": "red",
-        "message": "Prescribed dish not visible: sabzi",
+        "message": "Prescribed dish not visible anywhere: sabzi",
+        "stage": "ai"
+      },
+      {
+        "code": "plate_menu_missing",
+        "severity": "red",
+        "message": "Prescribed dish not served on the plate: sabzi",
         "stage": "ai"
       }
     ],
     "severity": "red",
     "severityRank": 3,
-    "score": 100,
-    "summary": "1 red, 0 amber",
+    "score": 200,
+    "summary": "2 red, 0 amber",
     "menuLabel": "rice, dal, sabzi",
     "reviewer_verdict": null,
     "reviewer_comment": "",
     "reviewer_at": null,
-    "processedAt": "2026-09-15T03:40:44.752Z"
+    "processedAt": "2026-09-21T08:25:27.710Z"
   },
   {
     "id": "S-0004",
@@ -495,7 +511,7 @@ const MOCK_DATA = [
     "reviewer_verdict": null,
     "reviewer_comment": "",
     "reviewer_at": null,
-    "processedAt": "2026-09-15T03:40:44.753Z"
+    "processedAt": "2026-09-21T08:25:27.711Z"
   },
   {
     "id": "S-0001",
@@ -610,7 +626,7 @@ const MOCK_DATA = [
     "reviewer_verdict": null,
     "reviewer_comment": "",
     "reviewer_at": null,
-    "processedAt": "2026-09-15T03:40:44.752Z"
+    "processedAt": "2026-09-21T08:25:27.710Z"
   }
 ];
 
@@ -628,10 +644,20 @@ const FLAG_STORE_KEY = 'mdm_verdicts_v1';
 function loadVerdicts(){ try{return JSON.parse(localStorage.getItem(FLAG_STORE_KEY))||{}}catch(e){return{}} }
 function saveVerdict(id,v){ const all=loadVerdicts(); all[id]=v; try{localStorage.setItem(FLAG_STORE_KEY,JSON.stringify(all))}catch(e){} }
 
-let ROWS=[], FILTER='all';
+let ROWS=[], FILTER='all', SELECTED_DATE='all';
 
 function fmtTime(iso){ if(!iso) return '—';
   return new Date(iso).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
+function fmtDate(d){ try{return new Date(d+'T12:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;} }
+
+// Rows for the selected date (or all dates).
+function dateRows(){ return SELECTED_DATE==='all' ? ROWS : ROWS.filter(r=>r.date===SELECTED_DATE); }
+// Unique submissions = distinct school (UDISE + name), case-insensitive.
+function uniqueSubmissions(rows){
+  const s=new Set();
+  rows.forEach(r=>{ const u=(r.school&&r.school.udise||'').trim(); const n=(r.school&&r.school.name||'').trim().toLowerCase(); s.add(u+'|'+n); });
+  return s.size;
+}
 
 const ITEM_LABELS={cooking:'Cooking',cooked_meal:'Cooked meal',serving_video:'Serving (video)',plate:'Plate'};
 const ITEM_KEYS=['cooking','cooked_meal','serving_video','plate'];
@@ -639,14 +665,15 @@ const ITEM_KEYS=['cooking','cooked_meal','serving_video','plate'];
 function verdictOf(row){ const v=loadVerdicts()[row.id]; return v||{verdict:null,comment:'',at:null}; }
 
 function renderKpis(){
-  const total=ROWS.length;
-  const red=ROWS.filter(r=>r.severity==='red').length;
-  const amber=ROWS.filter(r=>r.severity==='amber').length;
-  const pending=ROWS.filter(r=>!verdictOf(r).verdict).length;
-  const reviewed=total-pending;
-  const compliance=total?Math.round((ROWS.filter(r=>r.severity==='ok').length/total)*100):0;
+  const rows=dateRows();
+  const total=rows.length;
+  const unique=uniqueSubmissions(rows);
+  const red=rows.filter(r=>r.severity==='red').length;
+  const amber=rows.filter(r=>r.severity==='amber').length;
+  const pending=rows.filter(r=>!verdictOf(r).verdict).length;
+  const compliance=total?Math.round((rows.filter(r=>r.severity==='ok').length/total)*100):0;
   const cards=[
-    {n:total,l:'Submissions',cls:'yel'},
+    {n:unique,l:'Unique submissions',cls:'yel'},
     {n:red,l:'Red flags',cls:'red'},
     {n:amber,l:'Amber flags',cls:'amber'},
     {n:pending,l:'Awaiting review',cls:''},
@@ -654,6 +681,10 @@ function renderKpis(){
   ];
   document.getElementById('kpis').innerHTML=cards.map(c=>
     `<div class="kpi"><div class="n ${c.cls}">${c.n}</div><div class="l">${c.l}</div></div>`).join('');
+  // date summary line: uploads vs unique (surfaces repeat submissions)
+  const dupNote = total>unique ? ` · ${total-unique} repeat upload${total-unique>1?'s':''}` : '';
+  const sumEl=document.getElementById('dateSummary');
+  if(sumEl) sumEl.textContent = `${unique} unique of ${total} upload${total===1?'':'s'}${dupNote}`;
 }
 
 function mediaStrip(row){
@@ -727,7 +758,7 @@ function passFilter(row){
 function render(){
   renderKpis();
   const q=document.getElementById('queue');
-  const list=ROWS.filter(passFilter);
+  const list=dateRows().filter(passFilter);
   if(!list.length){ q.innerHTML=`<div class="card"><div class="chead"><div class="who"><div class="name" style="color:var(--grey)">Nothing here</div><div class="meta">No submissions match this filter.</div></div></div></div>`; return; }
   q.innerHTML=list.map(row=>{
     const v=verdictOf(row);
@@ -789,14 +820,28 @@ document.getElementById('filters').addEventListener('click',(e)=>{
   b.classList.add('active'); FILTER=b.dataset.f; render();
 });
 
+function populateDates(){
+  const dates=[...new Set(ROWS.map(r=>r.date).filter(Boolean))].sort().reverse();
+  SELECTED_DATE = dates[0] || 'all';
+  const sel=document.getElementById('dateSel');
+  sel.innerHTML = dates.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('')
+    + `<option value="all">All dates</option>`;
+  sel.value=SELECTED_DATE;
+  sel.addEventListener('change',()=>{ SELECTED_DATE=sel.value; updateDateline(); render(); });
+}
+function updateDateline(){
+  const el=document.getElementById('dateline');
+  el.textContent = SELECTED_DATE==='all' ? 'All dates' : fmtDate(SELECTED_DATE);
+}
+
 (async function init(){
   ROWS=await loadData();
   if(window.__MDM_MODE==='live'){
     document.getElementById('mockBanner').textContent =
       'Live data — reading real submissions. Reviewer verdicts here are stored per-browser until the write-back store is enabled.';
   }
-  const d = ROWS[0]?.date || new Date().toISOString().slice(0,10);
-  document.getElementById('dateline').textContent = new Date(d).toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  populateDates();
+  updateDateline();
   render();
 })();
 </script>
