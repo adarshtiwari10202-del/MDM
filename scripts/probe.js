@@ -40,14 +40,26 @@ Then, in a final section titled "EXTRACTABLE ATTRIBUTES", list the specific, str
 
 Write plain prose and lists. No JSON.`;
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function geminiFreeform(parts) {
   requireGeminiKey();
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.gemini.model}:generateContent?key=${config.gemini.apiKey}`;
   const body = { contents: [{ parts }], generationConfig: { temperature: 0.2 } };
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text().catch(() => '')).slice(0, 400)}`);
-  const json = await res.json();
-  return json?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '(empty response)';
+  // Retry transient overloads (503/429/500) with exponential backoff.
+  const delays = [3000, 6000, 12000, 20000, 30000];
+  let lastErr = '';
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.ok) {
+      const json = await res.json();
+      return json?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '(empty response)';
+    }
+    lastErr = `Gemini ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`;
+    if (![429, 500, 503].includes(res.status) || attempt === delays.length) break;
+    await sleep(delays[attempt]);
+  }
+  throw new Error(lastErr);
 }
 
 const inlinePart = (buf, mime) => ({ inline_data: { mime_type: mime, data: buf.toString('base64') } });
