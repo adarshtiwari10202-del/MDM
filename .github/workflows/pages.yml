@@ -44,6 +44,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Install dependencies
         run: npm ci || npm install
+      - name: Restore baked photo cache
+        uses: actions/cache@v4
+        with:
+          path: dist/media
+          key: pages-media-${{ github.run_id }}
+          restore-keys: pages-media-
       - name: Build static site
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
@@ -51,8 +57,10 @@ jobs:
           RESULTS_SHEET_TAB: Results
           DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
           ROSTER_SHEET_TAB: Sheet1
-          MEDIA_DAYS: ${{ github.event.inputs.media_days || '3' }}
-          MEDIA_MAX: ${{ github.event.inputs.media_max || '500' }}
+          # Photos are cached between runs, so each night only the new day's
+          # media is fetched (MEDIA_MAX caps NEW downloads per run).
+          MEDIA_DAYS: ${{ github.event.inputs.media_days || '7' }}
+          MEDIA_MAX: ${{ github.event.inputs.media_max || '350' }}
         run: node scripts/build-pages.js
       - name: Configure Pages
         uses: actions/configure-pages@v5
