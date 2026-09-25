@@ -147,7 +147,9 @@
   .badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
   .badge.no{background:#faece7;color:var(--red)}
   .badge.yes{background:#e7f1ec;color:var(--teal)}
-  @media(max-width:560px){ .attend .big{font-size:24px} }
+  .badge.warn{background:#f4e7d6;color:#9c6a34}
+  .rsn{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  @media(max-width:560px){ .attend .big{font-size:24px} .rsn{justify-content:flex-start} }
 </style>
 </head>
 <body>
@@ -169,6 +171,15 @@
     <div class="mock-banner" id="mockBanner">
       Preview mode — showing sample submissions. Reviewer verdicts are saved in this browser only.
       Live mode reads real submissions and writes verdicts back to the results store.
+    </div>
+
+    <div class="attend flag" id="flagBanner" role="button" tabindex="0" style="display:none">
+      <div class="big" id="flagNum">—</div>
+      <div class="txt">
+        <div class="lbl" id="flagLbl">Schools flagged</div>
+        <div class="hint" id="flagHint"></div>
+      </div>
+      <div class="cta">View list ›</div>
     </div>
 
     <div class="datebar">
@@ -220,6 +231,25 @@
       </div>
       <input class="modal-search" id="rmSearch" placeholder="Search school name or UDISE…">
       <div class="modal-list" id="rmList"></div>
+    </div>
+  </div>
+
+  <div class="modal-back" id="flagModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="fmTitle">
+      <div class="modal-h">
+        <div>
+          <h3 id="fmTitle">Schools flagged</h3>
+          <div class="msub" id="fmSub"></div>
+        </div>
+        <button class="x" id="fmClose" aria-label="Close">×</button>
+      </div>
+      <div class="modal-tools" id="fmTabs">
+        <button data-t="all" class="active">All flagged</button>
+        <button data-t="red">Red 3 days running</button>
+        <button data-t="nosubmit">No report 4+ days</button>
+      </div>
+      <input class="modal-search" id="fmSearch" placeholder="Search school name or UDISE…">
+      <div class="modal-list" id="fmList"></div>
     </div>
   </div>
 
@@ -781,6 +811,100 @@ function renderRosterModal(){
   }).join('');
 }
 
+// ============================================================
+// School-level, multi-day flags (computed over ALL data, not one date)
+//   • RED STREAK  — a red flag on RED_STREAK_DAYS consecutive reporting days
+//   • NO REPORT   — no submission in the last NOSUBMIT_DAYS reporting days
+// "Reporting days" = the distinct dates the block actually reported on, so
+// Sundays / holidays (when nobody submits) don't count as gaps.
+// ============================================================
+const RED_STREAK_DAYS=3, NOSUBMIT_DAYS=4;
+
+function reportingDays(){ return [...new Set(ROWS.map(r=>r.date).filter(Boolean))].sort(); }
+function fmtShort(d){ try{return new Date(d+'T12:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch(e){return d;} }
+function nameFor(udise){
+  const r=ROSTER.find(s=>String(s.udise).trim()===udise);
+  if(r&&r.name) return r.name;
+  const row=ROWS.find(x=>(x.school&&x.school.udise||'').trim()===udise);
+  return (row&&row.school&&row.school.name)||udise;
+}
+
+function schoolFlags(){
+  const days=reportingDays();
+  const redBy=new Map(), subBy=new Map();
+  ROWS.forEach(r=>{
+    const u=(r.school&&r.school.udise||'').trim(); if(!u) return;
+    (subBy.get(u)||subBy.set(u,new Set()).get(u)).add(r.date);
+    if(r.severity==='red'){ (redBy.get(u)||redBy.set(u,new Set()).get(u)).add(r.date); }
+  });
+  const flagged=new Map();
+  const ensure=(u)=>{ if(!flagged.has(u)) flagged.set(u,{udise:u,name:nameFor(u),redStreak:null,noSubmit:false}); return flagged.get(u); };
+  // Rule A: red on N consecutive reporting days
+  for(const [u,set] of redBy){
+    let run=null;
+    for(let i=0;i+RED_STREAK_DAYS-1<days.length;i++){
+      let ok=true;
+      for(let k=0;k<RED_STREAK_DAYS;k++){ if(!set.has(days[i+k])){ ok=false; break; } }
+      if(ok) run=days.slice(i,i+RED_STREAK_DAYS);
+    }
+    if(run) ensure(u).redStreak=run;
+  }
+  // Rule B: no submission across the last N reporting days (whole roster)
+  if(days.length>=NOSUBMIT_DAYS){
+    const last=days.slice(-NOSUBMIT_DAYS);
+    const universe=new Set([...ROSTER.map(s=>String(s.udise).trim()).filter(Boolean), ...subBy.keys()]);
+    for(const u of universe){
+      const sub=subBy.get(u)||new Set();
+      if(!last.some(d=>sub.has(d))) ensure(u).noSubmit=true;
+    }
+  }
+  return { flagged:[...flagged.values()], days };
+}
+
+function renderFlagged(){
+  const el=document.getElementById('flagBanner');
+  const { flagged, days }=schoolFlags();
+  if(days.length<Math.min(RED_STREAK_DAYS,NOSUBMIT_DAYS)){ el.style.display='none'; return; } // not enough days yet
+  el.style.display='flex';
+  const n=flagged.length;
+  el.classList.toggle('ok', n===0);
+  const reds=flagged.filter(f=>f.redStreak).length;
+  const nos=flagged.filter(f=>f.noSubmit).length;
+  document.getElementById('flagNum').textContent=n;
+  document.getElementById('flagLbl').textContent = n===0 ? 'No schools flagged' : (n===1?'school flagged':'schools flagged');
+  document.getElementById('flagHint').textContent = n===0
+    ? `No red streaks or missing-report streaks across ${days.length} reporting days`
+    : `${reds} red on ${RED_STREAK_DAYS} days running · ${nos} no report in last ${NOSUBMIT_DAYS} days · click for the list`;
+}
+
+// ---- flagged-schools modal ----
+let FM_TAB='all';
+function openFlag(){ FM_TAB='all'; document.getElementById('fmSearch').value='';
+  document.querySelectorAll('#fmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t==='all'));
+  renderFlagModal(); document.getElementById('flagModal').classList.add('show'); }
+function closeFlag(){ document.getElementById('flagModal').classList.remove('show'); }
+function renderFlagModal(){
+  const { flagged, days }=schoolFlags();
+  const span = days.length ? ` (${fmtShort(days[0])} – ${fmtShort(days[days.length-1])})` : '';
+  document.getElementById('fmSub').textContent =
+    `${flagged.length} flagged · ${days.length} reporting days${span}`;
+  const q=(document.getElementById('fmSearch').value||'').trim().toLowerCase();
+  let list=flagged.slice();
+  if(FM_TAB==='red') list=list.filter(f=>f.redStreak);
+  else if(FM_TAB==='nosubmit') list=list.filter(f=>f.noSubmit);
+  list.sort((a,b)=> (b.redStreak?1:0)-(a.redStreak?1:0) || a.name.localeCompare(b.name));
+  if(q) list=list.filter(f=>f.name.toLowerCase().includes(q)||String(f.udise).includes(q));
+  const el=document.getElementById('fmList');
+  if(!list.length){ el.innerHTML=`<div class="slrow"><span class="ud">No schools match.</span></div>`; return; }
+  el.innerHTML=list.map(f=>{
+    const badges=[];
+    if(f.redStreak) badges.push(`<span class="badge no">Red ${f.redStreak.length} days (${fmtShort(f.redStreak[0])}–${fmtShort(f.redStreak[f.redStreak.length-1])})</span>`);
+    if(f.noSubmit) badges.push(`<span class="badge warn">No report ${NOSUBMIT_DAYS}+ days</span>`);
+    return `<div class="slrow"><div><div class="nm">${f.name}</div><div class="ud">UDISE ${f.udise}</div></div>
+      <span class="rsn">${badges.join('')}</span></div>`;
+  }).join('');
+}
+
 const ITEM_LABELS={cooking:'Cooking',cooked_meal:'Cooked meal',serving_video:'Serving (video)',plate:'Plate'};
 const ITEM_KEYS=['cooking','cooked_meal','serving_video','plate'];
 
@@ -795,7 +919,7 @@ function renderKpis(){
   const compliance=total?Math.round((rows.filter(r=>r.severity==='ok').length/total)*100):0;
   const cards=[
     {n:unique,l:'Unique submissions',cls:'yel'},
-    {n:red,l:'Red flags',cls:'red'},
+    {n:red,l:'Red submissions (this date)',cls:'red'},
     {n:pending,l:'Awaiting review',cls:''},
     {n:compliance+'%',l:'Clean (no flags)',cls:'teal'},
   ];
@@ -876,6 +1000,7 @@ function passFilter(row){
 
 function render(){
   renderKpis();
+  renderFlagged();
   renderAttendance();
   const q=document.getElementById('queue');
   const list=dateRows().filter(passFilter);
@@ -946,13 +1071,27 @@ attendEl.addEventListener('click',openRoster);
 attendEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openRoster(); }});
 document.getElementById('rmClose').addEventListener('click',closeRoster);
 document.getElementById('rosterModal').addEventListener('click',(e)=>{ if(e.target.id==='rosterModal') closeRoster(); });
-document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeRoster(); });
 document.getElementById('rmTabs').addEventListener('click',(e)=>{
   const b=e.target.closest('button'); if(!b) return;
   document.querySelectorAll('#rmTabs button').forEach(x=>x.classList.remove('active'));
   b.classList.add('active'); RM_TAB=b.dataset.t; renderRosterModal();
 });
 document.getElementById('rmSearch').addEventListener('input',renderRosterModal);
+
+// flagged-schools modal wiring
+const flagEl=document.getElementById('flagBanner');
+flagEl.addEventListener('click',openFlag);
+flagEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openFlag(); }});
+document.getElementById('fmClose').addEventListener('click',closeFlag);
+document.getElementById('flagModal').addEventListener('click',(e)=>{ if(e.target.id==='flagModal') closeFlag(); });
+document.getElementById('fmTabs').addEventListener('click',(e)=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#fmTabs button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); FM_TAB=b.dataset.t; renderFlagModal();
+});
+document.getElementById('fmSearch').addEventListener('input',renderFlagModal);
+
+document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeRoster(); closeFlag(); } });
 
 function populateDates(){
   const dates=[...new Set(ROWS.map(r=>r.date).filter(Boolean))].sort().reverse();
