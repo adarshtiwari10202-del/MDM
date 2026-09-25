@@ -1,0 +1,75 @@
+name: Deploy dashboard to GitHub Pages
+
+# Builds a fully static copy of the dashboard (data + recent photos baked in)
+# and publishes it to GitHub Pages — no Vercel needed. Runs after each nightly
+# processing run, on demand, and when the dashboard/build code changes.
+on:
+  workflow_dispatch:
+    inputs:
+      media_days:
+        description: Recent reporting days to bake photos for
+        default: '3'
+      media_max:
+        description: Max media files to fetch
+        default: '500'
+  workflow_run:
+    workflows: ['Nightly MDM processing']
+    types: [completed]
+  push:
+    branches: [claude/mdm-monitoring-pipeline-xd3l9p]
+    paths:
+      - public/**
+      - scripts/build-pages.js
+      - backend/**
+      - .github/workflows/pages.yml
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install ffmpeg (video poster frames)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Build static site
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          RESULTS_SHEET_TAB: Results
+          DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
+          ROSTER_SHEET_TAB: Sheet1
+          MEDIA_DAYS: ${{ github.event.inputs.media_days || '3' }}
+          MEDIA_MAX: ${{ github.event.inputs.media_max || '500' }}
+        run: node scripts/build-pages.js
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

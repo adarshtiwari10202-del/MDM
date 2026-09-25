@@ -78,6 +78,7 @@
   .thumb .tl{position:absolute;top:6px;left:6px;background:rgba(0,49,107,.82);color:#fff;font-size:10px;
     padding:2px 6px;border-radius:5px;text-transform:capitalize}
   .thumb .ph{width:100%;text-align:center;color:var(--grey);font-size:11px;padding:6px;background:linear-gradient(180deg,transparent,#e7eef7)}
+  .thumb .vbadge{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.68);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px}
 
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
   @media(max-width:760px){.cols{grid-template-columns:1fr}}
@@ -722,7 +723,12 @@ async function loadData(){
     const r = await fetch('/api/results');
     if(r.ok){ const j = await r.json(); const rows = Array.isArray(j) ? j : j.rows;
       if(Array.isArray(rows) && rows.length){ if(j.mode) window.__MDM_MODE = j.mode; return rows; } }
-  }catch(e){ /* file:// or API down → sample */ }
+  }catch(e){ /* no serverless API (e.g. GitHub Pages) → try baked data */ }
+  try{
+    const r = await fetch('./data/results.json', {cache:'no-cache'});
+    if(r.ok){ const j = await r.json(); const rows = Array.isArray(j) ? j : j.rows;
+      if(Array.isArray(rows) && rows.length){ window.__MDM_MODE = j.mode || 'static'; window.__MDM_GENERATED = j.generatedAt || null; return rows; } }
+  }catch(e){ /* static data absent → sample */ }
   return MOCK_DATA;
 }
 
@@ -734,7 +740,11 @@ async function loadRoster(){
   try{
     const r=await fetch('/api/roster');
     if(r.ok){ const j=await r.json(); if(Array.isArray(j.schools)&&j.schools.length) return j.schools; }
-  }catch(e){ /* API down → embedded snapshot */ }
+  }catch(e){ /* no serverless API → try baked roster */ }
+  try{
+    const r=await fetch('./data/roster.json', {cache:'no-cache'});
+    if(r.ok){ const j=await r.json(); if(Array.isArray(j.schools)&&j.schools.length) return j.schools; }
+  }catch(e){ /* static roster absent → embedded snapshot */ }
   return ROSTER_FALLBACK;
 }
 
@@ -936,12 +946,19 @@ function mediaStrip(row){
     const f=row.files[k]||{};
     if(f.missing) return `<div class="thumb"><span class="tl">${ITEM_LABELS[k]}</span><div class="ph" style="color:var(--red)">Not submitted</div></div>`;
     const scene=(f.ai&&f.ai.scene_type)?f.ai.scene_type.replace(/_/g,' '):'';
-    // Live: stream real media via the proxy. Preview: labeled placeholder.
-    const src = f.fileId ? `/api/media?fileId=${encodeURIComponent(f.fileId)}` : (f.previewUrl||null);
+    // Static (GitHub Pages): baked local thumbnail/poster. Live (Vercel): media proxy.
+    const proxy = f.fileId ? `/api/media?fileId=${encodeURIComponent(f.fileId)}` : null;
+    const imgError = "this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'image unavailable'}))";
     let inner;
-    if(!src){ inner = `<div class="ph">${scene||'media'}</div>`; }
-    else if(k==='serving_video'){ inner = `<video src="${src}" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;background:#000"></video>`; }
-    else { inner = `<img src="${src}" loading="lazy" alt="${ITEM_LABELS[k]}" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'image unavailable'}))">`; }
+    if(k==='serving_video'){
+      if(f.localPoster){ inner = `<img src="${f.localPoster}" loading="lazy" alt="Serving video (poster)" style="width:100%;height:100%;object-fit:cover" onerror="${imgError}"><span class="vbadge">▶ video</span>`; }
+      else if(proxy){ inner = `<video src="${proxy}" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;background:#000"></video>`; }
+      else { inner = `<div class="ph">${scene||'video'}</div>`; }
+    } else {
+      const src = f.localMedia || proxy || f.previewUrl || null;
+      if(!src){ inner = `<div class="ph">${scene||'media'}</div>`; }
+      else { inner = `<img src="${src}" loading="lazy" alt="${ITEM_LABELS[k]}" style="width:100%;height:100%;object-fit:cover" onerror="${imgError}">`; }
+    }
     return `<div class="thumb"><span class="tl">${ITEM_LABELS[k]}</span>${inner}</div>`;
   }).join('')+`</div>`;
 }
@@ -1112,6 +1129,10 @@ function updateDateline(){
   if(window.__MDM_MODE==='live'){
     document.getElementById('mockBanner').textContent =
       'Live data — reading real submissions. Reviewer verdicts here are stored per-browser until the write-back store is enabled.';
+  } else if(window.__MDM_MODE==='static'){
+    const when = window.__MDM_GENERATED ? fmtTime(window.__MDM_GENERATED) : 'the last nightly build';
+    document.getElementById('mockBanner').textContent =
+      `Live data (updated ${when}). Refreshes automatically each night. Reviewer verdicts are stored per-browser on this build.`;
   }
   populateDates();
   updateDateline();
