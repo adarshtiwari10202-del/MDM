@@ -24,7 +24,7 @@ const HEADERS = [
 
 // The real test row.
 const ROW = {
-  'Timestamp': '9/14/2026 2:30:45',
+  'Timestamp': '9/13/2026 2:30:45',
   'Email Address': '',
   'विद्यालय का नाम / School Name': 'Test',
   "आज की तारीख / Today's Date": '9/13/2026',
@@ -47,7 +47,7 @@ const sub = parseDailyRow(ROW, cols, { rowIndex: 2 });
 check('udise parsed', sub.school.udise === '9192912922');
 check('date -> ISO 2026-09-13', sub.date === '2026-09-13');
 check('headcount 56', sub.headcountReported === 56);
-check('submittedAt in IST', sub.submittedAt === '2026-09-14T02:30:45+05:30');
+check('submittedAt in IST', sub.submittedAt === '2026-09-13T02:30:45+05:30');
 check('cooking file id extracted', sub.files.cooking.fileId === '165e5MhtCSbHKRxydSz7-D2duifm9RCFc');
 check('cooked_meal file id extracted', sub.files.cooked_meal.fileId === '1SVtt-cQawBlaThzt3Ptn-c9MirxSkFH-');
 check('empty video -> missing:true', sub.files.serving_video.missing === true);
@@ -78,13 +78,13 @@ check('school name cleaned of udise', subM.school.name === 'NAVINAGAR-2 (PS)');
 check('driveFileId /file/d/ shape', driveFileId('https://drive.google.com/file/d/ABC123abc_def/view') === 'ABC123abc_def');
 check('toISODate ISO passthrough', toISODate('2026-09-13') === '2026-09-13');
 
-// --- effectiveDate: reconcile manual "Today's Date" vs submission timestamp ---
+// --- effectiveDate: timestamp is the grouping date; manual is only a cross-check ---
 const TS = '2026-09-24T11:30:00+05:30';
-check('manual == timestamp day → trust manual', effectiveDate('2026-09-24', TS).date === '2026-09-24' && effectiveDate('2026-09-24', TS).source === 'manual');
-check('manual one day before (late submit) → trust manual', effectiveDate('2026-09-23', TS).date === '2026-09-23' && effectiveDate('2026-09-23', TS).source === 'manual');
-check('manual in the future (typo) → use timestamp', effectiveDate('2026-09-25', TS).date === '2026-09-24' && effectiveDate('2026-09-25', TS).source === 'timestamp');
-check('manual far in the past (typo) → use timestamp', effectiveDate('2026-08-01', TS).date === '2026-09-24' && effectiveDate('2026-08-01', TS).source === 'timestamp');
-check('no manual date → use timestamp', effectiveDate(null, TS).date === '2026-09-24' && effectiveDate(null, TS).source === 'timestamp');
+check('manual == timestamp → timestamp, no mismatch', effectiveDate('2026-09-24', TS).date === '2026-09-24' && effectiveDate('2026-09-24', TS).source === 'timestamp' && effectiveDate('2026-09-24', TS).mismatch === false);
+check('typed yesterday, submitted today → grouped TODAY (timestamp), mismatch', effectiveDate('2026-09-23', TS).date === '2026-09-24' && effectiveDate('2026-09-23', TS).source === 'timestamp' && effectiveDate('2026-09-23', TS).mismatch === true);
+check('typed tomorrow (typo) → timestamp, mismatch', effectiveDate('2026-09-25', TS).date === '2026-09-24' && effectiveDate('2026-09-25', TS).mismatch === true);
+check('typed far in the past (typo) → timestamp, mismatch', effectiveDate('2026-08-01', TS).date === '2026-09-24' && effectiveDate('2026-08-01', TS).mismatch === true);
+check('no manual date → timestamp, no mismatch', effectiveDate(null, TS).date === '2026-09-24' && effectiveDate(null, TS).source === 'timestamp' && effectiveDate(null, TS).mismatch === false);
 check('no timestamp → fall back to manual', effectiveDate('2026-09-24', null).date === '2026-09-24' && effectiveDate('2026-09-24', null).source === 'manual');
 check('neither → null', effectiveDate(null, null).date === null);
 

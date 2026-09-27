@@ -40,7 +40,8 @@ async function main() {
       const d = dayDiff(manual, ts);
       const bucket = d < -3 ? '<=-4' : d > 3 ? '>=4' : String(d);
       hist[bucket] = (hist[bucket] || 0) + 1;
-      if (eff.source === 'manual') agree++; else { corrected++; if (samples.length < 20) samples.push({ id: r.id, school: r.school?.name, manual, ts, chosen: eff.date }); }
+      if (eff.mismatch) { corrected++; if (samples.length < 20) samples.push({ id: r.id, school: r.school?.name, manual, ts, chosen: eff.date }); }
+      else agree++;
     }
   }
 
@@ -48,7 +49,7 @@ async function main() {
   for (const k of Object.keys(hist).sort((a, b) => (parseInt(a) || (a[0] === '<' ? -99 : 99)) - (parseInt(b) || (b[0] === '<' ? -99 : 99)))) {
     console.log(`   ${k.padStart(4)} days : ${hist[k]}`);
   }
-  console.log(`\n[fixdates] trust manual (0/−1 day): ${agree}   corrected to timestamp: ${corrected}   no timestamp: ${noTs}   no manual date: ${noManual}`);
+  console.log(`\n[fixdates] manual matches timestamp: ${agree}   manual differs (regrouped to timestamp): ${corrected}   no timestamp: ${noTs}   no manual date: ${noManual}`);
 
   console.log(`\n[fixdates] sample corrections (manual → chosen):`);
   for (const s of samples) console.log(`   ${s.school} | typed ${s.manual} | submitted ${s.ts} | → ${s.chosen}`);
@@ -72,6 +73,7 @@ async function main() {
     const eff = effectiveDate(manual, r.submittedAt);
     r.manualDate = manual;
     r.dateSource = eff.source;
+    r.dateMismatch = eff.mismatch;
     r.date = eff.date || r.date;
   }
   await clearResults();

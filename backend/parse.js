@@ -84,25 +84,21 @@ function fileFromUrl(url) {
 }
 
 /**
- * Reconcile the grouping date from the manual "Today's Date" field and the
- * auto-recorded submission timestamp. The meal day is the submission day, or at
- * most the day before (a late submission), so the manual date is trusted only
- * when it falls within [-1, 0] days of the timestamp date; otherwise it is a
- * typo and the timestamp date is used. Falls back to whichever exists.
+ * Grouping date for a submission. Google's auto-recorded submission timestamp
+ * is the source of truth (it cannot be mistyped, and MDM photos are taken and
+ * submitted the same day), so the timestamp's date is always used when present.
+ * The manual "Today's Date" field is kept only as a cross-check: `mismatch` is
+ * true when it disagrees with the timestamp date. The manual date is used only
+ * as a fallback when no timestamp exists.
  * @param {string|null} manualISO   'YYYY-MM-DD' from toISODate(manual field)
  * @param {string|null} submittedAtISO ISO datetime from toISODateTime(timestamp)
- * @returns {{date: string|null, source: 'manual'|'timestamp'|'none'}}
+ * @returns {{date: string|null, source: 'timestamp'|'manual'|'none', mismatch: boolean}}
  */
 export function effectiveDate(manualISO, submittedAtISO) {
   const ts = submittedAtISO ? String(submittedAtISO).slice(0, 10) : null;
-  if (manualISO && ts) {
-    const diff = Math.round((Date.parse(manualISO + 'T00:00:00Z') - Date.parse(ts + 'T00:00:00Z')) / 86400000);
-    if (diff <= 0 && diff >= -1) return { date: manualISO, source: 'manual' };
-    return { date: ts, source: 'timestamp' };
-  }
-  if (ts) return { date: ts, source: 'timestamp' };
-  if (manualISO) return { date: manualISO, source: 'manual' };
-  return { date: null, source: 'none' };
+  if (ts) return { date: ts, source: 'timestamp', mismatch: !!manualISO && manualISO !== ts };
+  if (manualISO) return { date: manualISO, source: 'manual', mismatch: false };
+  return { date: null, source: 'none', mismatch: false };
 }
 
 /**
@@ -147,7 +143,8 @@ export function parseDailyRow(row, cols, opts = {}) {
     },
     date,
     manualDate,                        // what the responder typed (may be wrong)
-    dateSource: eff.source,           // 'manual' | 'timestamp' | 'none'
+    dateSource: eff.source,           // 'timestamp' | 'manual' | 'none'
+    dateMismatch: eff.mismatch,       // true when typed date ≠ submission-timestamp date
     submittedAt,
     menu: getMenu(date, udise),
     headcountReported: Number(String(get('headcount') || '').replace(/[^\d]/g, '')) || null,
