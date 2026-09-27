@@ -1,0 +1,43 @@
+name: Re-analyse submissions (AI backfill)
+
+# Re-runs Gemini analysis for submissions AFTER a cutoff date (default: after
+# 19 Sept), leaving earlier fully-analysed days untouched. For backfilling days
+# stored without AI while the API key was suspended/overloaded.
+on:
+  workflow_dispatch:
+    inputs:
+      date_from:
+        description: Re-analyse submissions with date AFTER this (YYYY-MM-DD)
+        default: '2026-09-19'
+      concurrency:
+        description: Parallel submissions
+        default: '4'
+
+jobs:
+  reanalyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install ffmpeg (video)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Re-analyse
+        env:
+          DATA_MODE: live
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.6-flash
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
+          BASELINE_SHEET_ID: ${{ secrets.BASELINE_SHEET_ID }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          DAILY_SHEET_TAB: Form Responses 1
+          BASELINE_SHEET_TAB: Form Responses 1
+          RESULTS_SHEET_TAB: Results
+          DATE_FROM: ${{ github.event.inputs.date_from || '2026-09-19' }}
+          CONCURRENCY: ${{ github.event.inputs.concurrency || '4' }}
+        run: node scripts/reanalyze.js

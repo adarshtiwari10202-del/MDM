@@ -36,18 +36,24 @@ async function geminiGenerate(parts, { model = config.gemini.model, responseSche
       ...(responseSchema ? { responseSchema } : {}),
     },
   };
-  const res = await fetch(`${GEMINI_URL(model)}?key=${config.gemini.apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`Gemini ${res.status}: ${t.slice(0, 500)}`);
+  // Retry transient model-overload / rate-limit / server errors with backoff.
+  const delays = [3000, 6000, 12000, 20000, 30000];
+  let lastErr = '';
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    const res = await fetch(`${GEMINI_URL(model)}?key=${config.gemini.apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
+    }
+    lastErr = `Gemini ${res.status}: ${(await res.text().catch(() => '')).slice(0, 500)}`;
+    if (![429, 500, 503].includes(res.status) || attempt === delays.length) break;
+    await new Promise((r) => setTimeout(r, delays[attempt]));
   }
-  const json = await res.json();
-  const text = json?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
-  return text;
+  throw new Error(lastErr);
 }
 
 // Tolerant JSON parse (strips ```json fences if the model adds them).
