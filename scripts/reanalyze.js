@@ -41,10 +41,21 @@ async function main() {
   const [stored, subs] = await Promise.all([readResults(), getDailySubmissions()]);
   const kept = stored.filter((r) => (r.date || '') <= DATE_FROM);
   const targets = subs.filter((s) => (s.date || '') > DATE_FROM);
-  console.log(`[reanalyze] stored=${stored.length}  keeping ${kept.length} (≤${DATE_FROM})  re-analysing ${targets.length} (>${DATE_FROM})  concurrency=${CONCURRENCY}`);
-  if (!targets.length) { console.log('[reanalyze] nothing to do'); return; }
+  // A stored row is "done" if every present file already has AI, or has a
+  // permanent 400 (bad image) that a retry won't fix. Such rows are reused
+  // as-is so a re-run only spends credits on what's still missing (idempotent).
+  const fileResolved = (f) => !f || f.missing || hasAI(f) || (f.error && /\b400\b/.test(String(f.error)));
+  const rowDone = (r) => ITEMS.every((k) => fileResolved(r.files?.[k])) && ITEMS.some((k) => hasAI(r.files?.[k]));
+  const storedById = new Map(stored.map((r) => [r.id, r]));
+  const toProcess = [], reused = [];
+  for (const s of targets) {
+    const prev = storedById.get(s.id);
+    if (prev && rowDone(prev)) reused.push(prev); else toProcess.push(s);
+  }
+  console.log(`[reanalyze] stored=${stored.length}  keep ≤${DATE_FROM}: ${kept.length}  >${DATE_FROM}: ${targets.length} (reuse already-done ${reused.length}, process missing ${toProcess.length})  concurrency=${CONCURRENCY}`);
+  if (!toProcess.length) { console.log('[reanalyze] nothing missing to process'); return; }
 
-  const processed = await pool(targets, CONCURRENCY, (s) => processSubmission(s, { live: true }));
+  const processed = await pool(toProcess, CONCURRENCY, (s) => processSubmission(s, { live: true }));
   const good = processed.filter((r) => r && !r.__error);
 
   // Per-day AI success summary.
@@ -58,12 +69,12 @@ async function main() {
   const failed = processed.length - good.length;
   if (failed) console.log(`[reanalyze] ${failed} submissions errored entirely (kept out of write)`);
 
-  // Atomic rewrite: kept (≤cutoff) + freshly analysed (>cutoff).
-  const final = [...kept, ...good];
+  // Atomic rewrite: kept (≤cutoff) + already-done (reused) + freshly analysed.
+  const final = [...kept, ...reused, ...good];
   await clearResults();
   await ensureHeader();
   await appendResults(final);
-  console.log(`[reanalyze] wrote ${final.length} rows (${kept.length} kept + ${good.length} re-analysed). Run reflag next.`);
+  console.log(`[reanalyze] wrote ${final.length} rows (${kept.length} kept + ${reused.length} reused + ${good.length} re-analysed). Run reflag next.`);
 }
 
 main().catch((e) => { console.error('[reanalyze] FAILED:', e); process.exit(1); });
