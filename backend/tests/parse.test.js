@@ -1,7 +1,7 @@
 // Tests the row parser against the REAL header row + a REAL data row
 // pulled from the live daily sheet (1oFGXJ5…), so parsing is proven
 // before the service-account key is ever wired in.
-import { resolveColumns, parseDailyRow, driveFileId, toISODate } from '../parse.js';
+import { resolveColumns, parseDailyRow, driveFileId, toISODate, effectiveDate } from '../parse.js';
 
 let pass = 0, fail = 0;
 const check = (n, c) => { if (c) { pass++; console.log(`  ✓ ${n}`); } else { fail++; console.log(`  ✗ ${n}`); } };
@@ -77,6 +77,16 @@ check('school name cleaned of udise', subM.school.name === 'NAVINAGAR-2 (PS)');
 // driveFileId url-shape coverage
 check('driveFileId /file/d/ shape', driveFileId('https://drive.google.com/file/d/ABC123abc_def/view') === 'ABC123abc_def');
 check('toISODate ISO passthrough', toISODate('2026-09-13') === '2026-09-13');
+
+// --- effectiveDate: reconcile manual "Today's Date" vs submission timestamp ---
+const TS = '2026-09-24T11:30:00+05:30';
+check('manual == timestamp day → trust manual', effectiveDate('2026-09-24', TS).date === '2026-09-24' && effectiveDate('2026-09-24', TS).source === 'manual');
+check('manual one day before (late submit) → trust manual', effectiveDate('2026-09-23', TS).date === '2026-09-23' && effectiveDate('2026-09-23', TS).source === 'manual');
+check('manual in the future (typo) → use timestamp', effectiveDate('2026-09-25', TS).date === '2026-09-24' && effectiveDate('2026-09-25', TS).source === 'timestamp');
+check('manual far in the past (typo) → use timestamp', effectiveDate('2026-08-01', TS).date === '2026-09-24' && effectiveDate('2026-08-01', TS).source === 'timestamp');
+check('no manual date → use timestamp', effectiveDate(null, TS).date === '2026-09-24' && effectiveDate(null, TS).source === 'timestamp');
+check('no timestamp → fall back to manual', effectiveDate('2026-09-24', null).date === '2026-09-24' && effectiveDate('2026-09-24', null).source === 'manual');
+check('neither → null', effectiveDate(null, null).date === null);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
