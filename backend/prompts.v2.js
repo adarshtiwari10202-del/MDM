@@ -14,6 +14,13 @@ Rules:
 - Many photos carry a GPS-camera stamp (a band showing address, latitude, longitude, date and time). If present, read the numeric latitude/longitude and the date-time text exactly; otherwise use null.
 - Return ONLY the required JSON object, matching the given schema exactly.
 
+Hygiene & cleanliness (report every time, as plain observation — not a verdict):
+- area_cleanliness: clean / average / dirty / unclear (the visible surroundings, floor and surfaces around the food or cooking).
+- food_on_bare_floor: yes only if a cooking vessel, serving vessel or eating plate rests directly on bare ground with no mat/table/stand; no if raised or on a mat/cloth; unclear otherwise.
+- food_left_uncovered: yes if cooked food is open with no lid/cover where a cover would be expected; unclear if it cannot be told.
+- waste_or_pests_visible: yes if garbage, food waste, standing spillage, or flies/pests are visible near the food; else no; unclear if not visible enough.
+- hygiene_notes: one short factual sentence on anything hygiene-relevant you see, or "" if nothing notable.
+
 Common Indian dishes to recognise: rice, dal, khichdi, tehri, roti/chapati, sabzi, aloo/potato, kadhi, egg, banana, milk, poha, soya badi, bajra, moong.`;
 
 export const RUBRICS = {

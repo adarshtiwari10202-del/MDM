@@ -231,6 +231,21 @@ export function evaluateSubmission(submission, config = {}) {
     flags.push(flag('no_food', 'red', 'No food visible in the cooked-meal photo', 'ai'));
   }
 
+  // --- AI check: hygiene & cleanliness (clear negatives only; 'unclear' never flags) ---
+  const hyg = [];
+  for (const k of cfg.requiredItems) {
+    const ai = files[k]?.ai;
+    if (!ai) continue;
+    const label = itemName(k);
+    if (ai.kitchen_cleanliness === 'dirty' && k === 'cooking') hyg.push('dirty kitchen');
+    if (ai.area_cleanliness === 'dirty') hyg.push(`dirty surroundings (${label})`);
+    if (ai.waste_or_pests_visible === 'yes') hyg.push(`waste/pests near food (${label})`);
+    if (ai.food_left_uncovered === 'yes') hyg.push(`food left uncovered (${label})`);
+  }
+  if (hyg.length) {
+    flags.push(flag('hygiene_concern', 'red', `Hygiene concern: ${[...new Set(hyg)].join('; ')}`, 'ai'));
+  }
+
   // --- Roll up (RED-only model) ---
   // Every flag is red; a school is ranked by how many red flags it has.
   const reds = flags.length;

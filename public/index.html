@@ -972,6 +972,14 @@ function aiPanel(row){
     if(ai.food_present!=null) bits.push('food '+(ai.food_present?'present':'absent'));
     if(ai.plate_fullness) bits.push('portion: '+ai.plate_fullness);
     if(ai.cooking_in_progress!=null) bits.push('cooking '+(ai.cooking_in_progress?'in progress':'not seen'));
+    // hygiene observations (only show notable ones)
+    const hyg=[];
+    if(ai.area_cleanliness && ai.area_cleanliness!=='unclear') hyg.push('area: '+ai.area_cleanliness);
+    if(ai.kitchen_cleanliness && ai.kitchen_cleanliness!=='unclear') hyg.push('kitchen: '+ai.kitchen_cleanliness);
+    if(ai.waste_or_pests_visible==='yes') hyg.push('waste/pests near food');
+    if(ai.food_left_uncovered==='yes') hyg.push('food uncovered');
+    if(ai.food_on_bare_floor==='yes') hyg.push('on bare floor');
+    if(hyg.length) bits.push('hygiene — '+hyg.join(', '));
     rows.push(`<div class="ailine"><b>${ITEM_LABELS[k]}:</b> ${bits.join(' · ')||'—'}${ai.notes?`<br><span style="color:var(--grey)">“${ai.notes}”</span>`:''}</div>`);
   }
   return rows.join('');

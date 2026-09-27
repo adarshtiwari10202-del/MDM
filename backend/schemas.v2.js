@@ -34,6 +34,12 @@ const COMMON = {
   gps_lng: NUM_NULLABLE(),
   stamp_place_text: STR_NULLABLE(),
   capture_datetime_text: STR_NULLABLE(),
+  // --- hygiene & cleanliness (factual observations, not a verdict) ---
+  area_cleanliness: S(['clean', 'average', 'dirty', 'unclear']),
+  food_on_bare_floor: YN(),        // food/vessel/plate resting directly on bare ground
+  food_left_uncovered: YN(),       // cooked food left open/uncovered
+  waste_or_pests_visible: YN(),    // garbage, spillage, flies/pests near the food
+  hygiene_notes: { type: 'STRING' },
   confidence: S(['high', 'medium', 'low']),
   notes: { type: 'STRING' },
 };
