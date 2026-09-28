@@ -62,8 +62,9 @@ async function main() {
     const nameTok = t.name.toUpperCase();
     const hitsUdise = [];
     const hitsName = [];
-    rows.forEach((r, i) => {
-      const cells = r.map((c) => String(c ?? ''));
+    rows.forEach((r) => {
+      const i = r.__rowIndex;
+      const cells = Object.entries(r).filter(([k]) => k !== '__rowIndex').map(([, v]) => String(v ?? ''));
       const joined = cells.join(' | ');
       const joinedDigits = digits(joined);
       if (joined.includes(t.udise) || joinedDigits.includes(t.udise)) hitsUdise.push({ i, joined });
