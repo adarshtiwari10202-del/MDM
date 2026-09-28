@@ -151,5 +151,25 @@ const geoBig = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['ric
 })));
 check('photos ~300m apart (big campus) do NOT flag geo_inconsistent', !codes(geoBig).includes('geo_inconsistent'));
 
+// --- one flag per missing menu item (menu_missing and plate_menu_missing must
+//     not BOTH fire for the same dish) ---
+const dedupe = evaluateSubmission(base(['rice', 'dal', 'sabzi'], {
+  cooking: { ai: { cooking_in_progress: true } },
+  cooked_meal: { ai: { food_present: true, dishes_visible: ['rice', 'dal'], menu_items_present: { rice: true, dal: true, sabzi: false } } },
+  serving_video: { ai: { food_present: true } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice', 'dal'], menu_items_present: { rice: true, dal: true, sabzi: false } } },
+}));
+check('sabzi missing everywhere → menu_missing fires', codes(dedupe).includes('menu_missing'));
+check('same dish NOT also flagged plate_menu_missing', !codes(dedupe).includes('plate_menu_missing'));
+check('sabzi flagged exactly once', codes(dedupe).filter((c) => c === 'menu_missing' || c === 'plate_menu_missing').length === 1);
+
+// --- geo_missing: photos attached but none carry a GPS stamp ---
+const noGeo = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['rice'] })));
+check('no geo-tagged photo → geo_missing', codes(noGeo).includes('geo_missing'));
+const someGeo = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['rice'] }, {
+  cooking: { location: { lat: 27.5, lng: 80.7 }, ai: { cooking_in_progress: true } },
+})));
+check('at least one geo-tagged photo → no geo_missing', !codes(someGeo).includes('geo_missing'));
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

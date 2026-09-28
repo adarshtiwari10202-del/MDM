@@ -157,6 +157,18 @@ export function evaluateSubmission(submission, config = {}) {
     }
   }
 
+  // --- Rule check 4c: no geo-tagged photo at all ---
+  // The location can only be verified if at least one submitted photo carries a
+  // GPS-camera stamp. If the school attached photos but NONE are geo-tagged, the
+  // whole submission is unverifiable by location — flag it.
+  const presentItems = cfg.requiredItems.filter((k) => files[k] && !files[k].missing);
+  const geoTagged = presentItems.filter((k) => files[k].location && files[k].location.lat != null);
+  if (presentItems.length && geoTagged.length === 0) {
+    flags.push(
+      flag('geo_missing', 'red', 'No geo-tagged photo attached — location cannot be verified', 'rule')
+    );
+  }
+
   // --- Hash check: reused media (identical image CONTENT, by SHA-256) ---
   // Fires only when a photo's byte content matches one from a DIFFERENT
   // submission (another day/school) = genuine reuse. Same file in two slots of
@@ -195,20 +207,26 @@ export function evaluateSubmission(submission, config = {}) {
   };
 
   // menu_missing (red): a prescribed dish wasn't cooked at all (pot + plate both lack it).
+  // Track which menu items this already covers so the plate check below does not
+  // raise a SECOND flag for the same dish (one flag per missing dish is enough).
+  const menuMissingLabels = new Set();
   if (menu.length) {
     const seenAll = gatherSeen(['cooked_meal', 'plate']);
     const present = (item) => {
       const names = typeof item === 'string' ? [item] : (item.anyOf || []);
       return names.some((n) => dishSeenIn(seenAll, normDish(n)));
     };
-    const missing = menu.filter((it) => !present(it)).map(itemLabel);
+    const missing = menu.filter((it) => !present(it));
+    missing.forEach((it) => menuMissingLabels.add(itemLabel(it)));
     if (missing.length) {
-      flags.push(flag('menu_missing', 'red', `Prescribed dish not visible anywhere: ${missing.join(', ')}`, 'ai'));
+      flags.push(flag('menu_missing', 'red', `Prescribed dish not visible anywhere: ${missing.map(itemLabel).join(', ')}`, 'ai'));
     }
   }
 
   // plate_menu_missing (red): a prescribed dish is CLEARLY absent from the plate
   // (served-plate photo present; only clear absences flag — "unclear" does not).
+  // A dish already reported by menu_missing (absent from the pot too) is skipped
+  // so the same dish is never flagged twice.
   const plateAi = files.plate?.ai;
   if (menu.length && plateAi && !files.plate?.missing) {
     const seenPlate = gatherSeen(['plate']);
@@ -222,7 +240,10 @@ export function evaluateSubmission(submission, config = {}) {
       const names = typeof item === 'string' ? [item] : (item.anyOf || []);
       return names.length > 0 && names.every(clearlyAbsent);
     };
-    const missingOnPlate = menu.filter(itemAbsent).map(itemLabel);
+    const missingOnPlate = menu
+      .filter((it) => !menuMissingLabels.has(itemLabel(it))) // not already flagged as missing everywhere
+      .filter(itemAbsent)
+      .map(itemLabel);
     if (missingOnPlate.length) {
       flags.push(flag('plate_menu_missing', 'red', `Prescribed dish not served on the plate: ${missingOnPlate.join(', ')}`, 'ai'));
     }

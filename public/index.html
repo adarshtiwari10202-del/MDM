@@ -151,6 +151,45 @@
   .badge.warn{background:#f4e7d6;color:#9c6a34}
   .rsn{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   @media(max-width:560px){ .attend .big{font-size:24px} .rsn{justify-content:flex-start} }
+
+  /* Queue rows (landing) — one clickable row per school, worst first */
+  .qrow{background:#fff;border:1px solid var(--hair);border-radius:12px;margin-bottom:10px;
+    padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,49,107,.04);transition:box-shadow .12s,transform .05s}
+  .qrow:hover{box-shadow:0 4px 14px rgba(0,49,107,.10)}
+  .qrow:active{transform:translateY(1px)}
+  .qrow.sev-red{border-left:5px solid var(--red)}
+  .qrow.sev-ok{border-left:5px solid var(--teal)}
+  .qrow.reviewed{opacity:.72}
+  .qrow .who{flex:1;min-width:0}
+  .qrow .who .name{font-family:"Archivo";font-weight:700;font-size:16px}
+  .qrow .who .meta{color:var(--grey);font-size:12.5px;margin-top:2px}
+  .qrow .cta{font-size:12.5px;color:var(--navy);font-weight:700;white-space:nowrap}
+  .slrow[data-profile]{cursor:pointer;border-radius:6px}
+  .slrow[data-profile]:hover{background:#f4f8fd}
+
+  /* School profile modal */
+  .profile-modal{max-width:940px}
+  .pf-summary{border-radius:12px;padding:16px 18px;margin:4px 0 8px;border:1px solid var(--hair);
+    border-left:6px solid var(--teal);background:#f7fafd}
+  .pf-summary.sev-red{border-left-color:var(--red);background:#fbf1ee}
+  .pf-summary.sev-warn{border-left-color:var(--amber);background:#f8f2e8}
+  .pf-headline{font-family:"Archivo";font-weight:800;font-size:16px;color:var(--ink);margin-bottom:6px;line-height:1.35}
+  .pf-desc{font-size:13px;color:var(--grey);margin-bottom:10px}
+  .pf-issues{list-style:none;margin:0 0 4px;padding:0}
+  .pf-issues li{font-size:13px;padding:7px 0;border-bottom:1px dashed var(--hair)}
+  .pf-issues b{font-family:"Archivo";font-weight:600}
+  .pf-ct{font-size:11px;color:var(--grey);font-weight:600;margin-left:4px}
+  .pf-ev{color:var(--grey);font-size:12px;margin-top:3px;padding-left:10px;border-left:2px solid var(--hair)}
+  .pf-problem{font-size:13.5px;font-weight:700;color:var(--red);margin-top:10px}
+  .pf-summary.sev-ok .pf-problem{color:var(--teal)}
+  .pf-summary.sev-warn .pf-problem{color:#9c6a34}
+  .pf-daysh{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);
+    margin:18px 0 10px;font-weight:700;border-top:1px solid var(--hair);padding-top:14px}
+  .pf-day{margin-bottom:10px}
+  .pf-nosub{display:flex;align-items:center;gap:10px;padding:11px 13px;background:#faf6f6;
+    border:1px solid var(--hair);border-left:4px solid var(--amber);border-radius:8px}
+  .pf-nosub .pf-date{font-family:"Archivo";font-weight:700;font-size:13.5px}
 </style>
 </head>
 <body>
@@ -251,6 +290,19 @@
       </div>
       <input class="modal-search" id="fmSearch" placeholder="Search school name or UDISE…">
       <div class="modal-list" id="fmList"></div>
+    </div>
+  </div>
+
+  <div class="modal-back" id="profileModal">
+    <div class="modal profile-modal" role="dialog" aria-modal="true" aria-labelledby="pfTitle">
+      <div class="modal-h">
+        <div>
+          <h3 id="pfTitle">School profile</h3>
+          <div class="msub" id="pfSub"></div>
+        </div>
+        <button class="x" id="pfClose" aria-label="Close">×</button>
+      </div>
+      <div class="modal-list" id="pfBody"></div>
     </div>
   </div>
 
@@ -910,7 +962,7 @@ function renderFlagModal(){
     const badges=[];
     if(f.redStreak) badges.push(`<span class="badge no">Red ${f.redStreak.length} days (${fmtShort(f.redStreak[0])}–${fmtShort(f.redStreak[f.redStreak.length-1])})</span>`);
     if(f.noSubmit) badges.push(`<span class="badge warn">No report ${NOSUBMIT_DAYS}+ days</span>`);
-    return `<div class="slrow"><div><div class="nm">${f.name}</div><div class="ud">UDISE ${f.udise}</div></div>
+    return `<div class="slrow" data-profile="${f.udise}" role="button" tabindex="0"><div><div class="nm">${f.name}</div><div class="ud">UDISE ${f.udise}</div></div>
       <span class="rsn">${badges.join('')}</span></div>`;
   }).join('');
 }
@@ -1022,39 +1074,186 @@ function passFilter(row){
   return true;
 }
 
+// One full submission card (media + flags + AI reading + reviewer verdict).
+// Used inside the school profile, one per day. `open` renders it expanded.
+function cardHtml(row, open){
+  const v=verdictOf(row);
+  const sev = v.verdict? (v.verdict==='acceptable'?'ok':'red') : row.severity;
+  return `<div class="card sev-${sev==='info'?'ok':sev} ${v.verdict?'reviewed':''} ${open?'open':''}" data-card="${row.id}">
+    <div class="chead" data-toggle="${row.id}">
+      <div class="who">
+        <div class="name">${fmtDate(row.date)}</div>
+        <div class="meta">${fmtTime(row.submittedAt)} · menu: ${row.menuLabel || (Array.isArray(row.menu)?row.menu.join(', '):'')}</div>
+      </div>
+      ${severityChip(row)}
+      <span class="caret">▶</span>
+    </div>
+    <div class="cbody">
+      ${mediaStrip(row)}
+      <div class="cols">
+        <div><div class="h4">Automated flags</div>${flagPanel(row)}</div>
+        <div><div class="h4">AI reading (what is visible)</div>${aiPanel(row)}</div>
+      </div>
+      ${reviewPanel(row)}
+    </div>
+  </div>`;
+}
+
+// Compact landing row — one per school for the date, click opens the profile.
+function queueRow(row){
+  const v=verdictOf(row);
+  const sev = v.verdict? (v.verdict==='acceptable'?'ok':'red') : row.severity;
+  const u=(row.school&&row.school.udise||'').trim();
+  return `<div class="qrow sev-${sev==='info'?'ok':sev} ${v.verdict?'reviewed':''}" data-profile="${u}" role="button" tabindex="0">
+    <div class="who">
+      <div class="name">${row.school.name}</div>
+      <div class="meta">UDISE ${row.school.udise} · ${fmtTime(row.submittedAt)} · menu: ${row.menuLabel || (Array.isArray(row.menu)?row.menu.join(', '):'')}</div>
+    </div>
+    ${severityChip(row)}
+    <span class="cta">Open profile ›</span>
+  </div>`;
+}
+
 function render(){
   renderKpis();
   renderFlagged();
   renderAttendance();
   const q=document.getElementById('queue');
-  const list=dateRows().filter(passFilter);
-  if(!list.length){ q.innerHTML=`<div class="card"><div class="chead"><div class="who"><div class="name" style="color:var(--grey)">Nothing here</div><div class="meta">No submissions match this filter.</div></div></div></div>`; return; }
-  q.innerHTML=list.map(row=>{
-    const v=verdictOf(row);
-    const sev = v.verdict? (v.verdict==='acceptable'?'ok':'red') : row.severity;
-    return `<div class="card sev-${sev==='info'?'ok':sev} ${v.verdict?'reviewed':''}" data-card="${row.id}">
-      <div class="chead" data-toggle="${row.id}">
-        <div class="who">
-          <div class="name">${row.school.name}</div>
-          <div class="meta">UDISE ${row.school.udise} · ${row.date} · ${fmtTime(row.submittedAt)} · menu: ${row.menuLabel || (Array.isArray(row.menu)?row.menu.join(', '):'')}</div>
-        </div>
-        ${severityChip(row)}
-        <span class="caret">▶</span>
-      </div>
-      <div class="cbody">
-        ${mediaStrip(row)}
-        <div class="cols">
-          <div><div class="h4">Automated flags</div>${flagPanel(row)}</div>
-          <div><div class="h4">AI reading (what is visible)</div>${aiPanel(row)}</div>
-        </div>
-        ${reviewPanel(row)}
-      </div>
-    </div>`;
-  }).join('');
+  let list=dateRows().filter(passFilter);
+  // One row per school (worst submission wins if a school uploaded twice), worst first.
+  const bySchool=new Map();
+  list.forEach(r=>{ const u=(r.school&&r.school.udise||'').trim()||r.id;
+    const prev=bySchool.get(u); if(!prev||(r.score||0)>(prev.score||0)) bySchool.set(u,r); });
+  list=[...bySchool.values()].sort((a,b)=>(b.score||0)-(a.score||0) ||
+    String(a.school&&a.school.name||'').localeCompare(String(b.school&&b.school.name||'')));
+  if(!list.length){ q.innerHTML=`<div class="qrow" style="cursor:default"><div class="who"><div class="name" style="color:var(--grey)">Nothing here</div><div class="meta">No submissions match this filter.</div></div></div>`; return; }
+  q.innerHTML=list.map(queueRow).join('');
 }
+
+// ============================================================
+// School profile — multi-day priority reason + day-by-day evidence
+// ============================================================
+const FLAG_LABEL={
+  items_missing:'Incomplete submission (missing photos/video)',
+  geo_mismatch:'Photos taken far from the school',
+  geo_inconsistent:'Photos not all from one location',
+  geo_missing:'Photos not geo-tagged (location unverifiable)',
+  duplicate_media:'Reused / duplicate photo',
+  menu_missing:'Prescribed dish missing',
+  plate_menu_missing:'Dish missing from the served plate',
+  no_food:'No food visible',
+  hygiene_concern:'Hygiene concern',
+};
+const flagLabel=(c)=>FLAG_LABEL[c]||c.replace(/_/g,' ');
+
+let PROFILE_UDISE=null;
+function schoolRows(udise){
+  const u=String(udise).trim();
+  return ROWS.filter(r=>(r.school&&r.school.udise||'').trim()===u);
+}
+function schoolFlagEntry(udise){
+  const u=String(udise).trim();
+  return schoolFlags().flagged.find(f=>String(f.udise).trim()===u)||null;
+}
+// Aggregate a school's flags across a set of dates: code -> {days:Set, msgs:Set}
+function flagsAcross(udise, dates){
+  const rows=schoolRows(udise);
+  const byCode=new Map();
+  dates.forEach(d=>{
+    const row=rows.find(r=>r.date===d); if(!row) return;
+    (row.flags||[]).forEach(f=>{
+      const e=byCode.get(f.code)||byCode.set(f.code,{days:new Set(),msgs:new Set()}).get(f.code);
+      e.days.add(d); if(f.message) e.msgs.add(f.message);
+    });
+  });
+  return byCode;
+}
+function issuesHtml(byCode, totalDays){
+  const items=[...byCode.entries()].sort((a,b)=>b[1].days.size-a[1].days.size);
+  if(!items.length) return '';
+  return `<ul class="pf-issues">`+items.map(([code,e])=>{
+    const dd = totalDays>1 ? `<span class="pf-ct">on ${e.days.size} of ${totalDays} days</span>` : '';
+    const ev = e.msgs.size ? `<div class="pf-ev">${[...e.msgs].map(m=>'· '+m).join('<br>')}</div>` : '';
+    return `<li><b>${flagLabel(code)}</b>${dd}${ev}</li>`;
+  }).join('')+`</ul>`;
+}
+
+function renderProfile(){
+  const udise=PROFILE_UDISE; if(!udise) return;
+  const name=nameFor(udise);
+  const rows=schoolRows(udise);
+  const days=reportingDays();
+  const last7=days.slice(-7).reverse();       // most recent first
+  const entry=schoolFlagEntry(udise);
+  const totalRed=rows.filter(r=>r.severity==='red').length;
+
+  document.getElementById('pfTitle').textContent=name;
+  document.getElementById('pfSub').textContent=
+    `UDISE ${udise} · ${rows.length} submission${rows.length===1?'':'s'} on record · ${totalRed} with red flags`;
+
+  // ---- top summary: why this school is prioritised ----
+  let sev='ok', headline='', desc='', issues='', problem='';
+  const streak = entry && entry.redStreak;
+  if(streak){
+    sev='red';
+    headline=`Flagged: red flags on ${streak.length} consecutive reporting days (${fmtShort(streak[0])} – ${fmtShort(streak[streak.length-1])}).`;
+    desc=`This school has been red every reporting day in that run. Here is what those days were flagged for:`;
+    const byCode=flagsAcross(udise, streak);
+    issues=issuesHtml(byCode, streak.length);
+    const top=[...byCode.entries()].sort((a,b)=>b[1].days.size-a[1].days.size)[0];
+    if(top) problem=`Core problem: ${flagLabel(top[0])} — recurring on ${top[1].days.size} of the ${streak.length} flagged days.`;
+    if(entry.noSubmit) desc+=` It has also stopped submitting in the last ${NOSUBMIT_DAYS} reporting days.`;
+  } else if(entry && entry.noSubmit){
+    sev='warn';
+    headline=`Flagged: no submission in the last ${NOSUBMIT_DAYS} reporting days.`;
+    desc=`No daily meal photos or video were uploaded on any of the last ${NOSUBMIT_DAYS} days the block reported. The meal cannot be verified for this school.`;
+    problem=`Core problem: the school has gone silent — follow up on why nothing is being submitted.`;
+  } else if(totalRed){
+    sev='red';
+    const recent=rows.filter(r=>r.severity==='red').sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
+    headline=`Most recent red flag on ${fmtDate(recent.date)}.`;
+    desc=`Not on a 3-day streak, but this day was flagged. Details:`;
+    issues=issuesHtml(flagsAcross(udise,[recent.date]), 1);
+    problem='';
+  } else {
+    sev='ok';
+    headline=`No standing flags — clean across the ${rows.length} recorded day${rows.length===1?'':'s'}.`;
+    desc=`No red streak and no missing-report streak. Day-by-day record below.`;
+    problem=`No action needed based on the automated screen.`;
+  }
+
+  const summary=`<div class="pf-summary sev-${sev}">
+    <div class="pf-headline">${headline}</div>
+    ${desc?`<div class="pf-desc">${desc}</div>`:''}
+    ${issues}
+    ${problem?`<div class="pf-problem">${problem}</div>`:''}
+  </div>`;
+
+  // ---- day-by-day evidence for the last 7 reporting days ----
+  const daysHtml=last7.map(d=>{
+    const row=rows.find(r=>r.date===d);
+    if(!row) return `<div class="pf-nosub"><span class="pf-date">${fmtDate(d)}</span><span class="chip warn">No submission</span></div>`;
+    return `<div class="pf-day">${cardHtml(row, row.severity==='red')}</div>`;
+  }).join('');
+
+  document.getElementById('pfBody').innerHTML =
+    summary + `<div class="pf-daysh">Day-by-day — last ${last7.length} reporting days (analysis, flags &amp; evidence)</div>` + daysHtml;
+  document.getElementById('pfBody').scrollTop=0;
+}
+
+function openProfile(udise){
+  if(!udise) return;
+  PROFILE_UDISE=udise;
+  closeFlag(); closeRoster();
+  renderProfile();
+  document.getElementById('profileModal').classList.add('show');
+}
+function closeProfile(){ document.getElementById('profileModal').classList.remove('show'); PROFILE_UDISE=null; }
 
 // events
 document.addEventListener('click',(e)=>{
+  const pf=e.target.closest('[data-profile]');
+  if(pf){ openProfile(pf.dataset.profile); return; }
   const tog=e.target.closest('[data-toggle]');
   if(tog){ document.querySelector(`[data-card="${tog.dataset.toggle}"]`).classList.toggle('open'); return; }
   const vb=e.target.closest('[data-verdict]');
@@ -1115,7 +1314,17 @@ document.getElementById('fmTabs').addEventListener('click',(e)=>{
 });
 document.getElementById('fmSearch').addEventListener('input',renderFlagModal);
 
-document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeRoster(); closeFlag(); } });
+// profile modal wiring
+document.getElementById('pfClose').addEventListener('click',closeProfile);
+document.getElementById('profileModal').addEventListener('click',(e)=>{ if(e.target.id==='profileModal') closeProfile(); });
+
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='Escape'){ closeProfile(); closeRoster(); closeFlag(); }
+  if((e.key==='Enter'||e.key===' ')){
+    const pf=e.target.closest && e.target.closest('[data-profile]');
+    if(pf){ e.preventDefault(); openProfile(pf.dataset.profile); }
+  }
+});
 
 function populateDates(){
   const dates=[...new Set(ROWS.map(r=>r.date).filter(Boolean))].sort().reverse();
