@@ -31,7 +31,8 @@
   .wrap{max-width:1180px;margin:0 auto;padding:20px 24px 60px}
 
   /* KPI row */
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+  @media(max-width:560px){.kpis{grid-template-columns:1fr}}
   .kpi{background:var(--white);border:1px solid var(--hair);border-radius:12px;padding:14px 16px;
     box-shadow:0 1px 2px rgba(0,49,107,.04)}
   .kpi .n{font-family:"Archivo";font-size:28px;font-weight:800;line-height:1}
@@ -56,7 +57,6 @@
   .card.sev-red{border-left:5px solid var(--red)}
   .card.sev-amber{border-left:5px solid var(--amber)}
   .card.sev-ok{border-left:5px solid var(--teal)}
-  .card.reviewed{opacity:.72}
   .chead{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer}
   .chead .who{flex:1;min-width:0}
   .chead .who .name{font-family:"Archivo";font-weight:700;font-size:16px}
@@ -64,7 +64,6 @@
   .chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.4px}
   .chip.red{background:#f7e2db;color:var(--red)} .chip.amber{background:#f4e7d6;color:#9c6a34}
   .chip.ok{background:#dcebe4;color:#3d6b57} .chip.info{background:#e3eaf3;color:var(--grey)}
-  .chip.verdict-ok{background:var(--teal);color:#fff} .chip.verdict-no{background:var(--red);color:#fff}
   .caret{color:var(--grey);font-size:12px;transition:transform .15s}
   .card.open .caret{transform:rotate(90deg)}
 
@@ -90,20 +89,6 @@
   .ailine{font-size:12.5px;color:var(--ink);padding:6px 0;border-bottom:1px dashed var(--hair)}
   .ailine b{font-family:"Archivo";font-weight:600}
   .noflags{color:var(--teal);font-weight:600;font-size:13px}
-
-  /* reviewer */
-  .review{margin-top:16px;background:#f7fafd;border:1px solid var(--hair);border-radius:10px;padding:14px}
-  .review .h4{margin-bottom:10px}
-  .rbtns{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-  .rbtn{font:inherit;font-weight:700;font-size:13px;border:1.5px solid var(--hair);background:#fff;
-    padding:8px 16px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:7px}
-  .rbtn.ok.sel{background:var(--teal);color:#fff;border-color:var(--teal)}
-  .rbtn.no.sel{background:var(--red);color:#fff;border-color:var(--red)}
-  .review textarea{width:100%;border:1px solid var(--hair);border-radius:8px;padding:9px;font:inherit;font-size:13px;resize:vertical;min-height:52px}
-  .review .save{margin-top:9px;display:flex;align-items:center;gap:12px}
-  .review .save button{font:inherit;font-weight:700;background:var(--navy);color:#fff;border:0;padding:8px 18px;border-radius:8px;cursor:pointer}
-  .review .save .status{font-size:12.5px;color:var(--teal);font-weight:600}
-  .principle{font-size:11.5px;color:var(--grey);margin-top:9px;font-style:italic}
 
   .footnote{color:var(--grey);font-size:12px;margin-top:26px;text-align:center}
   .mock-banner{background:#fff7d6;border:1px solid #f0dd8a;color:#7a6a1f;font-size:12.5px;
@@ -160,7 +145,6 @@
   .qrow:active{transform:translateY(1px)}
   .qrow.sev-red{border-left:5px solid var(--red)}
   .qrow.sev-ok{border-left:5px solid var(--teal)}
-  .qrow.reviewed{opacity:.72}
   .qrow .who{flex:1;min-width:0}
   .qrow .who .name{font-family:"Archivo";font-weight:700;font-size:16px}
   .qrow .who .meta{color:var(--grey);font-size:12.5px;margin-top:2px}
@@ -244,10 +228,9 @@
     <div class="kpis" id="kpis"></div>
 
     <div class="section-h">
-      <h2>Review queue — worst flagged first</h2>
+      <h2>Schools — worst flagged first</h2>
       <div class="filters" id="filters">
         <button data-f="all" class="active">All</button>
-        <button data-f="pending">Awaiting review</button>
         <button data-f="red">Red</button>
       </div>
     </div>
@@ -255,7 +238,7 @@
     <div id="queue"></div>
 
     <div class="footnote">
-      AI observes what is visible; only the reviewer's verdict goes on record. No faces required.
+      AI observes what is visible in each submission. No faces required.
     </div>
    </div><!-- /mainView -->
 
@@ -803,10 +786,6 @@ async function loadRoster(){
   return ROSTER_FALLBACK;
 }
 
-const FLAG_STORE_KEY = 'mdm_verdicts_v1';
-function loadVerdicts(){ try{return JSON.parse(localStorage.getItem(FLAG_STORE_KEY))||{}}catch(e){return{}} }
-function saveVerdict(id,v){ const all=loadVerdicts(); all[id]=v; try{localStorage.setItem(FLAG_STORE_KEY,JSON.stringify(all))}catch(e){} }
-
 let ROWS=[], ROSTER=[], FILTER='all', SELECTED_DATE='all';
 
 function fmtTime(iso){ if(!iso) return '—';
@@ -973,19 +952,15 @@ function renderFlagModal(){
 const ITEM_LABELS={cooking:'Cooking',cooked_meal:'Cooked meal',serving_video:'Serving (video)',plate:'Plate'};
 const ITEM_KEYS=['cooking','cooked_meal','serving_video','plate'];
 
-function verdictOf(row){ const v=loadVerdicts()[row.id]; return v||{verdict:null,comment:'',at:null}; }
-
 function renderKpis(){
   const rows=dateRows();
   const total=rows.length;
   const unique=uniqueSubmissions(rows);
   const red=rows.filter(r=>r.severity==='red').length;
-  const pending=rows.filter(r=>!verdictOf(r).verdict).length;
   const compliance=total?Math.round((rows.filter(r=>r.severity==='ok').length/total)*100):0;
   const cards=[
     {n:unique,l:'Unique submissions',cls:'yel'},
     {n:red,l:'Red submissions (this date)',cls:'red'},
-    {n:pending,l:'Awaiting review',cls:''},
     {n:compliance+'%',l:'Clean (no flags)',cls:'teal'},
   ];
   document.getElementById('kpis').innerHTML=cards.map(c=>
@@ -1044,45 +1019,22 @@ function flagPanel(row){
   return row.flags.map(f=>`<div class="flag ${f.severity}"><span class="dot"></span><span>${f.message}</span><span class="stg">${f.stage}</span></div>`).join('');
 }
 
-function reviewPanel(row){
-  const v=verdictOf(row);
-  return `<div class="review">
-    <div class="h4">Reviewer verdict</div>
-    <div class="rbtns">
-      <button class="rbtn ok ${v.verdict==='acceptable'?'sel':''}" data-verdict="acceptable" data-id="${row.id}">✓ Acceptable</button>
-      <button class="rbtn no ${v.verdict==='not_acceptable'?'sel':''}" data-verdict="not_acceptable" data-id="${row.id}">✕ Not acceptable</button>
-    </div>
-    <textarea placeholder="Comment (what you saw, action needed)…" data-comment="${row.id}">${v.comment||''}</textarea>
-    <div class="save">
-      <button data-save="${row.id}">Save verdict</button>
-      <span class="status" id="status-${row.id}">${v.at?('Saved '+fmtTime(v.at)):''}</span>
-    </div>
-    <div class="principle">On record: the reviewer's verdict — never the AI flag alone.</div>
-  </div>`;
-}
-
 function severityChip(row){
-  const v=verdictOf(row);
-  if(v.verdict==='acceptable') return `<span class="chip verdict-ok">Verdict: Acceptable</span>`;
-  if(v.verdict==='not_acceptable') return `<span class="chip verdict-no">Verdict: Not acceptable</span>`;
   const map={red:'red',ok:'ok',info:'info'};
   const label={red:'Red',ok:'Clean',info:'Info'}[row.severity]||row.severity;
   return `<span class="chip ${map[row.severity]||'info'}">${label} · ${row.summary}</span>`;
 }
 
 function passFilter(row){
-  const v=verdictOf(row);
-  if(FILTER==='pending') return !v.verdict;
   if(FILTER==='red') return row.severity==='red';
   return true;
 }
 
-// One full submission card (media + flags + AI reading + reviewer verdict).
+// One full submission card (media + flags + AI reading).
 // Used inside the school profile, one per day. `open` renders it expanded.
 function cardHtml(row, open){
-  const v=verdictOf(row);
-  const sev = v.verdict? (v.verdict==='acceptable'?'ok':'red') : row.severity;
-  return `<div class="card sev-${sev==='info'?'ok':sev} ${v.verdict?'reviewed':''} ${open?'open':''}" data-card="${row.id}">
+  const sev = row.severity;
+  return `<div class="card sev-${sev==='info'?'ok':sev} ${open?'open':''}" data-card="${row.id}">
     <div class="chead" data-toggle="${row.id}">
       <div class="who">
         <div class="name">${fmtDate(row.date)}</div>
@@ -1097,17 +1049,15 @@ function cardHtml(row, open){
         <div><div class="h4">Automated flags</div>${flagPanel(row)}</div>
         <div><div class="h4">AI reading (what is visible)</div>${aiPanel(row)}</div>
       </div>
-      ${reviewPanel(row)}
     </div>
   </div>`;
 }
 
 // Compact landing row — one per school for the date, click opens the profile.
 function queueRow(row){
-  const v=verdictOf(row);
-  const sev = v.verdict? (v.verdict==='acceptable'?'ok':'red') : row.severity;
+  const sev = row.severity;
   const u=(row.school&&row.school.udise||'').trim();
-  return `<div class="qrow sev-${sev==='info'?'ok':sev} ${v.verdict?'reviewed':''}" data-profile="${u}" role="button" tabindex="0">
+  return `<div class="qrow sev-${sev==='info'?'ok':sev}" data-profile="${u}" role="button" tabindex="0">
     <div class="who">
       <div class="name">${row.school.name}</div>
       <div class="meta">UDISE ${row.school.udise} · ${fmtTime(row.submittedAt)} · menu: ${row.menuLabel || (Array.isArray(row.menu)?row.menu.join(', '):'')}</div>
@@ -1275,31 +1225,6 @@ document.addEventListener('click',(e)=>{
   if(pf){ openProfile(pf.dataset.profile); return; }
   const tog=e.target.closest('[data-toggle]');
   if(tog){ document.querySelector(`[data-card="${tog.dataset.toggle}"]`).classList.toggle('open'); return; }
-  const vb=e.target.closest('[data-verdict]');
-  if(vb){ const card=vb.closest('.card'); card.querySelectorAll('.rbtn').forEach(b=>b.classList.remove('sel')); vb.classList.add('sel'); return; }
-  const sv=e.target.closest('[data-save]');
-  if(sv){
-    const id=sv.dataset.save; const card=sv.closest('.card');
-    const sel=card.querySelector('.rbtn.sel');
-    const comment=card.querySelector(`[data-comment="${id}"]`).value;
-    const verdict=sel?sel.dataset.verdict:null;
-    const at=new Date().toISOString();
-    if(!verdict){ document.getElementById('status-'+id).textContent='Pick a verdict first'; return; }
-    saveVerdict(id,{verdict,comment,at});           // optimistic (per-browser)
-    const statusEl=document.getElementById('status-'+id);
-    statusEl.textContent='Saved '+fmtTime(at);
-    renderKpis();
-    const row=ROWS.find(r=>r.id===id);
-    card.querySelector('.chead .chip').outerHTML=severityChip(row);
-    if(window.__MDM_MODE==='live'){                  // persist to the store
-      statusEl.textContent='Saving…';
-      fetch('/api/verdict',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({id,verdict,comment})})
-        .then(r=>r.json()).then(j=>{ statusEl.textContent = j.ok? ('Saved '+fmtTime(at)) : ('Save failed: '+(j.error||'')); })
-        .catch(err=>{ statusEl.textContent='Saved locally (store unreachable)'; });
-    }
-    return;
-  }
 });
 document.getElementById('filters').addEventListener('click',(e)=>{
   const b=e.target.closest('button'); if(!b) return;
