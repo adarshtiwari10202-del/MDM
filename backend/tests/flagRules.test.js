@@ -125,23 +125,31 @@ check('same photos across TWO schools → duplicate_media (red)', crossSchool.so
 const crossDay = await processAll([dupSub('r1', '2026-09-19'), dupSub('r3', '2026-09-22')]);
 check('same photos on a DIFFERENT day → duplicate_media (red)', crossDay.some((r) => codes(r).includes('duplicate_media')));
 
-// --- hygiene & cleanliness flag (clear negatives only) ---
+// --- hygiene & cleanliness flag (dirty kitchen/surroundings or waste/pests only) ---
 const hygBad = evaluateSubmission(base(['rice'], {
   cooking: { ai: { cooking_in_progress: true, kitchen_cleanliness: 'dirty' } },
   cooked_meal: { ai: { food_present: true, dishes_visible: ['rice'], waste_or_pests_visible: 'yes' } },
   serving_video: { ai: { food_present: true } },
-  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'], food_left_uncovered: 'yes' } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'] } },
 }));
-check('hygiene_concern fires on dirty/waste/uncovered', codes(hygBad).includes('hygiene_concern'));
+check('hygiene_concern fires on dirty kitchen / waste-pests', codes(hygBad).includes('hygiene_concern'));
 check('hygiene message lists specifics', hygBad.flags.find((f) => f.code === 'hygiene_concern').message.includes('waste/pests'));
 
-const hygUnclear = evaluateSubmission(base(['rice'], {
-  cooking: { ai: { cooking_in_progress: true, kitchen_cleanliness: 'unclear', area_cleanliness: 'unclear' } },
-  cooked_meal: { ai: { food_present: true, dishes_visible: ['rice'], waste_or_pests_visible: 'unclear', food_left_uncovered: 'unclear' } },
+// Uncovered food and bare-floor placement are expected/normal → NEVER flag.
+const hygOk = evaluateSubmission(base(['rice'], {
+  cooking: { ai: { cooking_in_progress: true, kitchen_cleanliness: 'clean' } },
+  cooked_meal: { ai: { food_present: true, dishes_visible: ['rice'], food_left_uncovered: 'yes' } },
   serving_video: { ai: { food_present: true } },
-  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'], food_on_bare_floor: 'yes' } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'], food_on_bare_floor: 'yes', food_left_uncovered: 'yes' } },
 }));
-check('hygiene unclear (and floor-only) does NOT flag', !codes(hygUnclear).includes('hygiene_concern'));
+check('uncovered food + bare floor do NOT flag hygiene', !codes(hygOk).includes('hygiene_concern'));
+
+// Geo spread within the generous radius (e.g. a large campus ~300m) must NOT flag.
+const geoBig = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['rice'] }, {
+  cooking: { location: { lat: 27.5, lng: 80.7 }, ai: {} },
+  cooked_meal: { location: { lat: 27.5027, lng: 80.7 }, ai: { food_present: true, dishes_visible: ['rice'] } }, // ~300m apart
+})));
+check('photos ~300m apart (big campus) do NOT flag geo_inconsistent', !codes(geoBig).includes('geo_inconsistent'));
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

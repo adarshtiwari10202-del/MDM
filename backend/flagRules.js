@@ -18,8 +18,11 @@ export const SEVERITY_NAME = ['ok', 'info', 'amber', 'red'];
 export const DEFAULT_CONFIG = {
   // Meal must be submitted within this local-time window (24h clock).
   mealWindow: { startMin: 10 * 60 + 30, endMin: 13 * 60 + 0 }, // 10:30–13:00
-  // Geo: how far (metres) an upload's location may be from the school.
-  geoRadiusMeters: 150,
+  // Geo: allowed distance (metres). Used both for how far an upload may be from
+  // the school's known location, and for the spread among a submission's own
+  // photos. Set generously so a large campus + normal GPS drift (a few hundred
+  // metres) does not flag; only genuinely different locations do.
+  geoRadiusMeters: 500,
   // Timing spread: if all uploads land within this many seconds, it looks
   // like one staged burst rather than a genuine cook→serve→eat sequence.
   burstThresholdSeconds: 90,
@@ -240,7 +243,8 @@ export function evaluateSubmission(submission, config = {}) {
     if (ai.kitchen_cleanliness === 'dirty' && k === 'cooking') hyg.push('dirty kitchen');
     if (ai.area_cleanliness === 'dirty') hyg.push(`dirty surroundings (${label})`);
     if (ai.waste_or_pests_visible === 'yes') hyg.push(`waste/pests near food (${label})`);
-    if (ai.food_left_uncovered === 'yes') hyg.push(`food left uncovered (${label})`);
+    // Note: uncovered food is NOT a hygiene flag — schools uncover the food to
+    // photograph it for us, so it is expected and fine.
   }
   if (hyg.length) {
     flags.push(flag('hygiene_concern', 'red', `Hygiene concern: ${[...new Set(hyg)].join('; ')}`, 'ai'));
