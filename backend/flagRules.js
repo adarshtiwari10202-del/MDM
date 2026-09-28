@@ -164,8 +164,12 @@ export function evaluateSubmission(submission, config = {}) {
   const presentItems = cfg.requiredItems.filter((k) => files[k] && !files[k].missing);
   const geoTagged = presentItems.filter((k) => files[k].location && files[k].location.lat != null);
   if (presentItems.length && geoTagged.length === 0) {
+    // Recorded as an INFO note, not a red flag: it is shown per school so the
+    // team can chase geo-tagging, but it does NOT rank a school as flagged
+    // (the camera/app not stamping GPS is a data-quality issue, not a meal
+    // violation, and it was drowning the genuine signals).
     flags.push(
-      flag('geo_missing', 'red', 'No geo-tagged photo attached — location cannot be verified', 'rule')
+      flag('geo_missing', 'info', 'No geo-tagged photo attached — location cannot be verified', 'rule')
     );
   }
 
@@ -205,21 +209,44 @@ export function evaluateSubmission(submission, config = {}) {
     const cats = DISH_CATEGORIES[nd];
     return !!(cats && cats.some((m) => seen.has(m)));
   };
+  // Merge the AI's per-dish present/absent judgements across stages. A dish is
+  // recorded false only if the AI explicitly marked it absent and never present.
+  const gatherMip = (keys) => {
+    const mip = {};
+    for (const k of keys) {
+      const m = files[k]?.ai?.menu_items_present;
+      if (!m) continue;
+      for (const [item, present] of Object.entries(m)) {
+        const nd = normDish(item);
+        if (present === true) mip[nd] = true;
+        else if (present === false && mip[nd] !== true) mip[nd] = false;
+      }
+    }
+    return mip;
+  };
 
-  // menu_missing (red): a prescribed dish wasn't cooked at all (pot + plate both lack it).
-  // Track which menu items this already covers so the plate check below does not
-  // raise a SECOND flag for the same dish (one flag per missing dish is enough).
+  // menu_missing (red): a prescribed dish is CONFIRMED absent — the AI did not
+  // see it in the pot or the plate AND explicitly marked it absent. A dish the
+  // AI merely did not mention counts as "unclear" and is NEVER flagged (this is
+  // what stops false positives from imperfect dish recognition).
+  // menuMissingLabels also stops the plate check below double-flagging a dish.
   const menuMissingLabels = new Set();
   if (menu.length) {
     const seenAll = gatherSeen(['cooked_meal', 'plate']);
-    const present = (item) => {
-      const names = typeof item === 'string' ? [item] : (item.anyOf || []);
-      return names.some((n) => dishSeenIn(seenAll, normDish(n)));
+    const mipAll = gatherMip(['cooked_meal', 'plate']);
+    const confirmedAbsent = (name) => {
+      const nd = normDish(name);
+      if (dishSeenIn(seenAll, nd)) return false; // visibly present somewhere
+      return mipAll[nd] === false;               // AI explicitly said absent
     };
-    const missing = menu.filter((it) => !present(it));
+    const itemAbsent = (item) => {
+      const names = typeof item === 'string' ? [item] : (item.anyOf || []);
+      return names.length > 0 && names.every(confirmedAbsent);
+    };
+    const missing = menu.filter(itemAbsent);
     missing.forEach((it) => menuMissingLabels.add(itemLabel(it)));
     if (missing.length) {
-      flags.push(flag('menu_missing', 'red', `Prescribed dish not visible anywhere: ${missing.map(itemLabel).join(', ')}`, 'ai'));
+      flags.push(flag('menu_missing', 'red', `Prescribed dish confirmed missing (not in pot or plate): ${missing.map(itemLabel).join(', ')}`, 'ai'));
     }
   }
 
@@ -255,29 +282,37 @@ export function evaluateSubmission(submission, config = {}) {
     flags.push(flag('no_food', 'red', 'No food visible in the cooked-meal photo', 'ai'));
   }
 
-  // --- AI check: hygiene & cleanliness (clear negatives only; 'unclear' never flags) ---
+  // --- AI check: hygiene & cleanliness (only a CLEAR "dirty" rating flags) ---
+  // Deliberately conservative: we flag hygiene ONLY when the AI rates the
+  // kitchen or the surroundings explicitly "dirty" (its rubric = visible
+  // refuse / standing waste / obvious filth). We do NOT flag on the
+  // waste_or_pests signal on its own — the model over-reports the odd fly or a
+  // speck as "pests", which produced false hygiene flags. Uncovered food and
+  // bare-floor placement are expected and never flag.
   const hyg = [];
   for (const k of cfg.requiredItems) {
     const ai = files[k]?.ai;
     if (!ai) continue;
     const label = itemName(k);
-    if (ai.kitchen_cleanliness === 'dirty' && k === 'cooking') hyg.push('dirty kitchen');
-    if (ai.area_cleanliness === 'dirty') hyg.push(`dirty surroundings (${label})`);
-    if (ai.waste_or_pests_visible === 'yes') hyg.push(`waste/pests near food (${label})`);
-    // Note: uncovered food is NOT a hygiene flag — schools uncover the food to
-    // photograph it for us, so it is expected and fine.
+    if (ai.kitchen_cleanliness === 'dirty' && k === 'cooking') hyg.push('kitchen clearly dirty');
+    if (ai.area_cleanliness === 'dirty') hyg.push(`surroundings clearly dirty (${label})`);
   }
   if (hyg.length) {
     flags.push(flag('hygiene_concern', 'red', `Hygiene concern: ${[...new Set(hyg)].join('; ')}`, 'ai'));
   }
 
-  // --- Roll up (RED-only model) ---
-  // Every flag is red; a school is ranked by how many red flags it has.
-  const reds = flags.length;
+  // --- Roll up ---
+  // A school is ranked ONLY by its red flags. 'info' notes (e.g. geo_missing)
+  // stay in the flags list so the dashboard can show them per school, but they
+  // never make a school count as flagged.
+  const reds = flags.filter((f) => f.severity === 'red').length;
+  const notes = flags.length - reds;
   const severity = reds > 0 ? 'red' : 'ok';
   const severityRank = reds > 0 ? SEVERITY.red : SEVERITY.ok;
   const score = reds; // queue sorts by number of red flags, highest first
-  const summary = reds ? `${reds} red flag${reds > 1 ? 's' : ''}` : 'No flags';
+  const summary = reds
+    ? `${reds} red flag${reds > 1 ? 's' : ''}`
+    : (notes ? 'No red flags' : 'No flags');
 
   return { flags, severity, severityRank, score, summary };
 }

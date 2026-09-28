@@ -50,11 +50,15 @@ const alt1 = evaluateSubmission(base([{ anyOf: ['tehri', 'khichdi'] }, 'sabzi'],
   mkFiles({ dishes_visible: ['khichdi', 'sabzi'] })));
 check('anyOf satisfied by khichdi → no menu_missing', !codes(alt1).includes('menu_missing'));
 
-// Alternative NOT satisfied
+// Alternative NOT satisfied — AI explicitly marks both alternatives absent.
 const alt2 = evaluateSubmission(base([{ anyOf: ['tehri', 'khichdi'] }],
-  mkFiles({ dishes_visible: ['rice'] })));
-check('anyOf unmet → menu_missing tehri/khichdi', codes(alt2).includes('menu_missing') &&
+  mkFiles({ dishes_visible: ['rice'], menu_items_present: { tehri: false, khichdi: false } })));
+check('anyOf unmet (confirmed absent) → menu_missing tehri/khichdi', codes(alt2).includes('menu_missing') &&
   alt2.flags.find((f) => f.code === 'menu_missing').message.includes('tehri/khichdi'));
+
+// A dish the AI did NOT mention is "unclear" — it must NOT flag menu_missing.
+const menuUnclear = evaluateSubmission(base(['sabzi'], mkFiles({ dishes_visible: ['rice'] })));
+check('unmentioned dish (unclear) does NOT flag menu_missing', !codes(menuUnclear).includes('menu_missing'));
 
 // Category: banana satisfies "fruit"
 const cat = evaluateSubmission(base(['fruit'], mkFiles({ dishes_visible: ['banana'] })));
@@ -125,15 +129,24 @@ check('same photos across TWO schools → duplicate_media (red)', crossSchool.so
 const crossDay = await processAll([dupSub('r1', '2026-09-19'), dupSub('r3', '2026-09-22')]);
 check('same photos on a DIFFERENT day → duplicate_media (red)', crossDay.some((r) => codes(r).includes('duplicate_media')));
 
-// --- hygiene & cleanliness flag (dirty kitchen/surroundings or waste/pests only) ---
+// --- hygiene flag: ONLY a clear "dirty" rating fires (not the pest signal) ---
 const hygBad = evaluateSubmission(base(['rice'], {
   cooking: { ai: { cooking_in_progress: true, kitchen_cleanliness: 'dirty' } },
+  cooked_meal: { ai: { food_present: true, dishes_visible: ['rice'], area_cleanliness: 'dirty' } },
+  serving_video: { ai: { food_present: true } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'] } },
+}));
+check('hygiene_concern fires on a clear dirty rating', codes(hygBad).includes('hygiene_concern'));
+check('hygiene message lists specifics', hygBad.flags.find((f) => f.code === 'hygiene_concern').message.includes('dirty'));
+
+// Pest/waste signal ALONE must NOT flag — the AI over-reports the odd fly.
+const hygPests = evaluateSubmission(base(['rice'], {
+  cooking: { ai: { cooking_in_progress: true, kitchen_cleanliness: 'average' } },
   cooked_meal: { ai: { food_present: true, dishes_visible: ['rice'], waste_or_pests_visible: 'yes' } },
   serving_video: { ai: { food_present: true } },
   plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'] } },
 }));
-check('hygiene_concern fires on dirty kitchen / waste-pests', codes(hygBad).includes('hygiene_concern'));
-check('hygiene message lists specifics', hygBad.flags.find((f) => f.code === 'hygiene_concern').message.includes('waste/pests'));
+check('waste/pests signal alone does NOT flag hygiene', !codes(hygPests).includes('hygiene_concern'));
 
 // Uncovered food and bare-floor placement are expected/normal → NEVER flag.
 const hygOk = evaluateSubmission(base(['rice'], {
@@ -166,6 +179,8 @@ check('sabzi flagged exactly once', codes(dedupe).filter((c) => c === 'menu_miss
 // --- geo_missing: photos attached but none carry a GPS stamp ---
 const noGeo = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['rice'] })));
 check('no geo-tagged photo → geo_missing', codes(noGeo).includes('geo_missing'));
+check('geo_missing is an info note, not red', noGeo.flags.find((f) => f.code === 'geo_missing').severity === 'info');
+check('geo_missing alone does NOT rank the school as flagged', noGeo.severity === 'ok' && noGeo.score === 0);
 const someGeo = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['rice'] }, {
   cooking: { location: { lat: 27.5, lng: 80.7 }, ai: { cooking_in_progress: true } },
 })));

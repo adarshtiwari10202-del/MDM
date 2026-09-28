@@ -14,11 +14,14 @@ Rules:
 - Many photos carry a GPS-camera stamp (a band showing address, latitude, longitude, date and time). If present, read the numeric latitude/longitude and the date-time text exactly; otherwise use null.
 - Return ONLY the required JSON object, matching the given schema exactly.
 
-Hygiene & cleanliness (report every time, as plain observation — not a verdict):
-- area_cleanliness: clean / average / dirty / unclear (the visible surroundings, floor and surfaces around the food or cooking).
+Hygiene & cleanliness (report every time, as plain observation — not a verdict).
+Be CONSERVATIVE: rural kitchens are modest and that is normal. Rate "dirty" and
+report pests ONLY when it is obvious and unmistakable. When in any doubt, choose
+"average" or "unclear" — never "dirty", and never "yes" for pests.
+- area_cleanliness: clean / average / dirty / unclear (the visible surroundings, floor and surfaces around the food or cooking). Use "dirty" ONLY for clearly, obviously dirty conditions — piled refuse, standing filth, heavy grime. A plain, worn, or simple setting is "average", not "dirty".
 - food_on_bare_floor: yes only if a cooking vessel, serving vessel or eating plate rests directly on bare ground with no mat/table/stand; no if raised or on a mat/cloth; unclear otherwise.
 - food_left_uncovered: yes if cooked food is open with no lid/cover where a cover would be expected; unclear if it cannot be told.
-- waste_or_pests_visible: yes if garbage, food waste, standing spillage, or flies/pests are visible near the food; else no; unclear if not visible enough.
+- waste_or_pests_visible: yes ONLY if there is clearly visible garbage/food waste in a heap, or pests/flies plainly present in numbers right at the food. A single insect, a speck, motion blur, or anything you are unsure about is "no". Do not guess pests from small dark dots or texture.
 - hygiene_notes: one short factual sentence on anything hygiene-relevant you see, or "" if nothing notable.
 
 Common Indian dishes to recognise: rice, dal, khichdi, tehri, roti/chapati, sabzi, aloo/potato, kadhi, egg, banana, milk, poha, soya badi, bajra, moong.`;
@@ -26,7 +29,7 @@ Common Indian dishes to recognise: rice, dal, khichdi, tehri, roti/chapati, sabz
 export const RUBRICS = {
   plate_fullness: `plate_fullness rubric — sparse: plate base clearly visible through/around the food, thin covering. adequate: food covers most of the plate in an even layer, distinct portions. generous: food heaped/mounded above the well of the plate. unclear: angle/glare/crop prevents a fair judgment.`,
   cookware_fill_level: `cookware_fill_level rubric — full: food fills ~three-quarters or more. about_half: ~half full. low: ~a quarter or less. unclear: vessel depth not visible.`,
-  kitchen_cleanliness: `kitchen_cleanliness rubric — clean: surfaces tidy, no visible refuse/spillage. average: some clutter or minor spillage. dirty: visible refuse, standing waste, or pests. unclear: kitchen not sufficiently visible.`,
+  kitchen_cleanliness: `kitchen_cleanliness rubric — clean: surfaces tidy, no visible refuse/spillage. average: some clutter, minor spillage, or a plain/worn but ordinary kitchen (this is the DEFAULT for a normal rural kitchen). dirty: ONLY for clearly, obviously dirty — piled refuse, standing waste, or pests plainly present in numbers. unclear: kitchen not sufficiently visible. When in doubt, choose average — never dirty.`,
 };
 
 const STAGE_INSTRUCTIONS = {

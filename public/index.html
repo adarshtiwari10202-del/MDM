@@ -84,8 +84,8 @@
   @media(max-width:760px){.cols{grid-template-columns:1fr}}
   .h4{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);margin:0 0 8px}
   .flag{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:8px;margin-bottom:6px;font-size:13px}
-  .flag.red{background:#faece7} .flag.amber{background:#f6efe4} .flag .dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none}
-  .flag.red .dot{background:var(--red)} .flag.amber .dot{background:var(--amber)}
+  .flag.red{background:#faece7} .flag.amber{background:#f6efe4} .flag.info{background:#eef1f5} .flag .dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none}
+  .flag.red .dot{background:var(--red)} .flag.amber .dot{background:var(--amber)} .flag.info .dot{background:var(--grey)}
   .flag .stg{font-size:10px;color:var(--grey);text-transform:uppercase;border:1px solid var(--hair);padding:0 5px;border-radius:4px;margin-left:auto;white-space:nowrap}
   .ailine{font-size:12.5px;color:var(--ink);padding:6px 0;border-bottom:1px dashed var(--hair)}
   .ailine b{font-family:"Archivo";font-weight:600}
@@ -168,8 +168,15 @@
   .slrow[data-profile]{cursor:pointer;border-radius:6px}
   .slrow[data-profile]:hover{background:#f4f8fd}
 
-  /* School profile modal */
-  .profile-modal{max-width:940px}
+  /* School profile — in-page "zoom" view */
+  .pf-topbar{display:flex;align-items:center;gap:16px;margin:2px 0 18px;padding-bottom:14px;border-bottom:2px solid var(--hair)}
+  .pf-back{font:inherit;font-weight:700;font-size:13px;color:var(--navy);background:#fff;
+    border:1.5px solid var(--hair);border-radius:8px;padding:8px 14px;cursor:pointer;white-space:nowrap}
+  .pf-back:hover{background:#f4f8fd;border-color:var(--navy)}
+  .pf-school{min-width:0}
+  .pf-school .pf-name{font-family:"Archivo",sans-serif;font-weight:800;font-size:22px;color:var(--ink);line-height:1.1}
+  .pf-school .pf-udise{font-size:12.5px;color:var(--grey);margin-top:3px}
+  @media(max-width:560px){ .pf-school .pf-name{font-size:18px} }
   .pf-summary{border-radius:12px;padding:16px 18px;margin:4px 0 8px;border:1px solid var(--hair);
     border-left:6px solid var(--teal);background:#f7fafd}
   .pf-summary.sev-red{border-left-color:var(--red);background:#fbf1ee}
@@ -184,6 +191,8 @@
   .pf-problem{font-size:13.5px;font-weight:700;color:var(--red);margin-top:10px}
   .pf-summary.sev-ok .pf-problem{color:var(--teal)}
   .pf-summary.sev-warn .pf-problem{color:#9c6a34}
+  .pf-note{font-size:12.5px;color:var(--grey);margin-top:10px;padding-top:8px;border-top:1px dashed var(--hair)}
+  .pf-note b{font-family:"Archivo";font-weight:600;color:var(--ink)}
   .pf-daysh{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);
     margin:18px 0 10px;font-weight:700;border-top:1px solid var(--hair);padding-top:14px}
   .pf-day{margin-bottom:10px}
@@ -208,6 +217,7 @@
   </div>
 
   <div class="wrap">
+   <div id="mainView">
     <div class="mock-banner" id="mockBanner">
       Preview mode — showing sample submissions. Reviewer verdicts are saved in this browser only.
       Live mode reads real submissions and writes verdicts back to the results store.
@@ -253,6 +263,18 @@
     <div class="footnote">
       AI observes what is visible; only the reviewer's verdict goes on record. No faces required.
     </div>
+   </div><!-- /mainView -->
+
+   <div id="profileView" style="display:none">
+     <div class="pf-topbar">
+       <button id="pfBack" class="pf-back">← Back to all schools</button>
+       <div class="pf-school">
+         <div class="pf-name" id="pfTitle">—</div>
+         <div class="pf-udise" id="pfSub"></div>
+       </div>
+     </div>
+     <div id="pfBody"></div>
+   </div>
   </div>
 
   <div class="modal-back" id="rosterModal">
@@ -290,19 +312,6 @@
       </div>
       <input class="modal-search" id="fmSearch" placeholder="Search school name or UDISE…">
       <div class="modal-list" id="fmList"></div>
-    </div>
-  </div>
-
-  <div class="modal-back" id="profileModal">
-    <div class="modal profile-modal" role="dialog" aria-modal="true" aria-labelledby="pfTitle">
-      <div class="modal-h">
-        <div>
-          <h3 id="pfTitle">School profile</h3>
-          <div class="msub" id="pfSub"></div>
-        </div>
-        <button class="x" id="pfClose" aria-label="Close">×</button>
-      </div>
-      <div class="modal-list" id="pfBody"></div>
     </div>
   </div>
 
@@ -1162,6 +1171,7 @@ function flagsAcross(udise, dates){
   dates.forEach(d=>{
     const row=rows.find(r=>r.date===d); if(!row) return;
     (row.flags||[]).forEach(f=>{
+      if(f.severity==='info') return; // info notes (e.g. geo_missing) are not flags
       const e=byCode.get(f.code)||byCode.set(f.code,{days:new Set(),msgs:new Set()}).get(f.code);
       e.days.add(d); if(f.message) e.msgs.add(f.message);
     });
@@ -1222,11 +1232,18 @@ function renderProfile(){
     problem=`No action needed based on the automated screen.`;
   }
 
+  // Geo-tagging data note (shown per school, but NOT a flagging basis).
+  const geoDays=last7.filter(d=>{ const row=rows.find(r=>r.date===d); return row && (row.flags||[]).some(f=>f.code==='geo_missing'); });
+  const geoNote = geoDays.length
+    ? `<div class="pf-note"><b>Data note:</b> no geo-tagged photo on ${geoDays.length} of the last ${last7.length} reporting days — location could not be verified. (Not counted as a flag.)</div>`
+    : '';
+
   const summary=`<div class="pf-summary sev-${sev}">
     <div class="pf-headline">${headline}</div>
     ${desc?`<div class="pf-desc">${desc}</div>`:''}
     ${issues}
     ${problem?`<div class="pf-problem">${problem}</div>`:''}
+    ${geoNote}
   </div>`;
 
   // ---- day-by-day evidence for the last 7 reporting days ----
@@ -1246,9 +1263,17 @@ function openProfile(udise){
   PROFILE_UDISE=udise;
   closeFlag(); closeRoster();
   renderProfile();
-  document.getElementById('profileModal').classList.add('show');
+  document.getElementById('mainView').style.display='none';
+  document.getElementById('profileView').style.display='block';
+  window.scrollTo(0,0);
 }
-function closeProfile(){ document.getElementById('profileModal').classList.remove('show'); PROFILE_UDISE=null; }
+function closeProfile(){
+  document.getElementById('profileView').style.display='none';
+  document.getElementById('mainView').style.display='';
+  PROFILE_UDISE=null;
+  window.scrollTo(0,0);
+}
+function profileOpen(){ return document.getElementById('profileView').style.display!=='none'; }
 
 // events
 document.addEventListener('click',(e)=>{
@@ -1314,12 +1339,11 @@ document.getElementById('fmTabs').addEventListener('click',(e)=>{
 });
 document.getElementById('fmSearch').addEventListener('input',renderFlagModal);
 
-// profile modal wiring
-document.getElementById('pfClose').addEventListener('click',closeProfile);
-document.getElementById('profileModal').addEventListener('click',(e)=>{ if(e.target.id==='profileModal') closeProfile(); });
+// profile view wiring (in-page, not a modal)
+document.getElementById('pfBack').addEventListener('click',closeProfile);
 
 document.addEventListener('keydown',(e)=>{
-  if(e.key==='Escape'){ closeProfile(); closeRoster(); closeFlag(); }
+  if(e.key==='Escape'){ if(profileOpen()) closeProfile(); closeRoster(); closeFlag(); }
   if((e.key==='Enter'||e.key===' ')){
     const pf=e.target.closest && e.target.closest('[data-profile]');
     if(pf){ e.preventDefault(); openProfile(pf.dataset.profile); }
