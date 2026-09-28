@@ -210,7 +210,6 @@
       </div>
       <div class="meta">
         <div id="dateline">—</div>
-        <div>AI screens · humans judge</div>
       </div>
     </div>
     <div class="gradbar"></div>
@@ -218,11 +217,6 @@
 
   <div class="wrap">
    <div id="mainView">
-    <div class="mock-banner" id="mockBanner">
-      Preview mode — showing sample submissions. Reviewer verdicts are saved in this browser only.
-      Live mode reads real submissions and writes verdicts back to the results store.
-    </div>
-
     <div class="attend flag" id="flagBanner" role="button" tabindex="0" style="display:none">
       <div class="big" id="flagNum">—</div>
       <div class="txt">
@@ -1366,14 +1360,6 @@ function updateDateline(){
 
 (async function init(){
   [ROWS, ROSTER] = await Promise.all([loadData(), loadRoster()]);
-  if(window.__MDM_MODE==='live'){
-    document.getElementById('mockBanner').textContent =
-      'Live data — reading real submissions. Reviewer verdicts here are stored per-browser until the write-back store is enabled.';
-  } else if(window.__MDM_MODE==='static'){
-    const when = window.__MDM_GENERATED ? fmtTime(window.__MDM_GENERATED) : 'the last nightly build';
-    document.getElementById('mockBanner').textContent =
-      `Live data (updated ${when}). Refreshes automatically each night. Reviewer verdicts are stored per-browser on this build.`;
-  }
   populateDates();
   updateDateline();
   render();
