@@ -1,0 +1,23 @@
+name: Flag statistics
+
+# Read-only: reports average schools flagged per day and how many schools have a
+# 3-consecutive-day red streak. No AI, no writes — runs in seconds.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Run stats
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          RESULTS_SHEET_TAB: Results
+        run: node scripts/stats.js
