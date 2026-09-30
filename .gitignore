@@ -28,3 +28,4 @@ scratch/
 # --- OS ---
 .DS_Store
 Thumbs.db
+reports/

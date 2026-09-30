@@ -3,6 +3,9 @@ name: Missed last 3 days
 on:
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   missed:
     runs-on: ubuntu-latest
@@ -20,3 +23,10 @@ jobs:
           DAILY_SHEET_TAB: Form Responses 1
           ROSTER_SHEET_TAB: Sheet1
         run: node scripts/missed3days.js
+      - name: Commit authoritative JSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f reports/missed3days.json
+          git commit -m "data: missed3days.json snapshot [skip ci]" || echo "no changes"
+          git push origin HEAD:claude/mdm-monitoring-pipeline-xd3l9p

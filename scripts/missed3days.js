@@ -5,6 +5,8 @@
 // Grouping is by the Google submission TIMESTAMP (IST). Read-only.
 // Needs: GOOGLE_SERVICE_ACCOUNT_JSON, DAILY_SHEET_ID (+ Sheet1 roster).
 // ============================================================
+import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { readRoster } from '../backend/roster.js';
 import { readSheet } from '../backend/sheets.js';
 import { resolveColumns, toISODate, toISODateTime, effectiveDate } from '../backend/parse.js';
@@ -66,6 +68,24 @@ async function main() {
     console.log(`\n[cutoff] 30-Sep rows recorded AFTER 7 PM (not counted): ${excluded30.length}`);
     excluded30.slice(0, 20).forEach((x) => console.log(`   ${x.t} IST  ${x.school}`));
   }
+
+  // Authoritative machine-readable output (committed by the workflow) so the
+  // document is built from the exact computed data — no hand transcription.
+  const canonical = missed.map((m) => `${m.udise}:${m.missedDays.join(',')}`).join('|');
+  const md5 = crypto.createHash('md5').update(canonical).digest('hex');
+  console.log(`\n[verify] missed=${missed.length} allThree=${allThree} md5(udise:missed)=${md5}`);
+  const out = {
+    generatedAt: new Date().toISOString(),
+    days: DAYS, cutoffDay: CUTOFF_DAY, cutoffTimeIST: CUTOFF_TIME,
+    rosterSize: roster.length,
+    perDay: DAYS.map((d) => ({ date: d, schools: distinct(d) })),
+    excludedAfter7pm: excluded30.map((x) => ({ udise: x.u, school: x.school, timeIST: x.t })),
+    missedCount: missed.length, allThreeCount: allThree, md5,
+    missed: missed.map((m) => ({ udise: m.udise, name: m.name, reported: m.got, missedDays: m.missedDays })),
+  };
+  fs.mkdirSync('reports', { recursive: true });
+  fs.writeFileSync('reports/missed3days.json', JSON.stringify(out, null, 2));
+  console.log('[verify] wrote reports/missed3days.json');
 }
 
 main().catch((e) => { console.error('[missed3days] FAILED:', e); process.exit(1); });
