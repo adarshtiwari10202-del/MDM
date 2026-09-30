@@ -25,6 +25,14 @@
   .topbar h1{font-size:20px;font-weight:800;margin:0;letter-spacing:.2px}
   .topbar .sub{color:#B9CBE4;font-size:13px;margin-top:2px}
   .topbar .meta{color:#cfe0f5;font-size:13px;text-align:right}
+  .schooljump{margin-top:8px;display:flex;justify-content:flex-end;gap:6px;align-items:center}
+  .schooljump input{width:230px;max-width:52vw;padding:7px 10px;border-radius:8px;border:1px solid #33507a;
+    background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit}
+  .schooljump input::placeholder{color:#9fb6d6}
+  .schooljump button{padding:7px 12px;border-radius:8px;border:0;background:var(--gold,#e0a92e);color:#1a2233;
+    font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+  .schooljump button:hover{filter:brightness(1.05)}
+  @media(max-width:560px){ .schooljump{justify-content:flex-start} .schooljump input{max-width:64vw} }
   .gradbar{height:4px;margin-top:16px;opacity:.55;
     background:linear-gradient(90deg,var(--navy),var(--yel),var(--teal),var(--amber))}
 
@@ -129,6 +137,7 @@
   .slrow{display:flex;align-items:center;justify-content:space-between;gap:10px;
     padding:9px 2px;border-bottom:1px solid #f0f0ee}
   .slrow .nm{font-size:13.5px;font-weight:600}
+  .slrow .nm .sn{color:var(--grey);font-weight:700;margin-right:2px}
   .slrow .ud{font-size:11.5px;color:var(--grey);margin-top:1px}
   .badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
   .badge.no{background:#faece7;color:var(--red)}
@@ -194,6 +203,12 @@
       </div>
       <div class="meta">
         <div id="dateline">—</div>
+        <div class="schooljump">
+          <input id="schoolJump" list="schoolList" placeholder="Go to school — UDISE or name…"
+                 autocomplete="off" aria-label="Go to a school's history">
+          <datalist id="schoolList"></datalist>
+          <button id="schoolJumpGo" type="button">Go</button>
+        </div>
       </div>
     </div>
     <div class="gradbar"></div>
@@ -283,9 +298,8 @@
         <button class="x" id="fmClose" aria-label="Close">×</button>
       </div>
       <div class="modal-tools" id="fmTabs">
-        <button data-t="all" class="active">All flagged</button>
-        <button data-t="red">Red 3 days running</button>
-        <button data-t="nosubmit">No report 4+ days</button>
+        <button data-t="red" class="active">Red 3 days running</button>
+        <button data-t="nosubmit">Missed a day (last 3)</button>
       </div>
       <input class="modal-search" id="fmSearch" placeholder="Search school name or UDISE…">
       <div class="modal-list" id="fmList"></div>
@@ -858,11 +872,12 @@ function renderRosterModal(){
 // ============================================================
 // School-level, multi-day flags (computed over ALL data, not one date)
 //   • RED STREAK  — a red flag on RED_STREAK_DAYS consecutive reporting days
-//   • NO REPORT   — no submission in the last NOSUBMIT_DAYS reporting days
+//   • MISSED DAY  — missed reporting on ANY of the last RECENT_DAYS reporting
+//                   days (flagged even if only a single day was missed)
 // "Reporting days" = the distinct dates the block actually reported on, so
 // Sundays / holidays (when nobody submits) don't count as gaps.
 // ============================================================
-const RED_STREAK_DAYS=3, NOSUBMIT_DAYS=4;
+const RED_STREAK_DAYS=3, RECENT_DAYS=3;
 
 function reportingDays(){ return [...new Set(ROWS.map(r=>r.date).filter(Boolean))].sort(); }
 function fmtShort(d){ try{return new Date(d+'T12:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch(e){return d;} }
@@ -882,7 +897,7 @@ function schoolFlags(){
     if(r.severity==='red'){ (redBy.get(u)||redBy.set(u,new Set()).get(u)).add(r.date); }
   });
   const flagged=new Map();
-  const ensure=(u)=>{ if(!flagged.has(u)) flagged.set(u,{udise:u,name:nameFor(u),redStreak:null,noSubmit:false}); return flagged.get(u); };
+  const ensure=(u)=>{ if(!flagged.has(u)) flagged.set(u,{udise:u,name:nameFor(u),redStreak:null,missedRecent:false,missedDays:[]}); return flagged.get(u); };
   // Rule A: red on N consecutive reporting days
   for(const [u,set] of redBy){
     let run=null;
@@ -893,38 +908,41 @@ function schoolFlags(){
     }
     if(run) ensure(u).redStreak=run;
   }
-  // Rule B: no submission across the last N reporting days (whole roster)
-  if(days.length>=NOSUBMIT_DAYS){
-    const last=days.slice(-NOSUBMIT_DAYS);
+  // Rule B: missed reporting on ANY of the last RECENT_DAYS reporting days
+  // (a single missed day is enough to flag the school). Whole roster.
+  const last3 = days.slice(-RECENT_DAYS);
+  if(last3.length){
     const universe=new Set([...ROSTER.map(s=>String(s.udise).trim()).filter(Boolean), ...subBy.keys()]);
     for(const u of universe){
       const sub=subBy.get(u)||new Set();
-      if(!last.some(d=>sub.has(d))) ensure(u).noSubmit=true;
+      const missed=last3.filter(d=>!sub.has(d));
+      if(missed.length){ const e=ensure(u); e.missedRecent=true; e.missedDays=missed; }
     }
   }
-  return { flagged:[...flagged.values()], days };
+  return { flagged:[...flagged.values()], days, last3 };
 }
 
 function renderFlagged(){
   const el=document.getElementById('flagBanner');
-  const { flagged, days }=schoolFlags();
-  if(days.length<Math.min(RED_STREAK_DAYS,NOSUBMIT_DAYS)){ el.style.display='none'; return; } // not enough days yet
+  const { flagged, days, last3 }=schoolFlags();
+  if(!days.length){ el.style.display='none'; return; } // no data yet
   el.style.display='flex';
   const n=flagged.length;
   el.classList.toggle('ok', n===0);
   const reds=flagged.filter(f=>f.redStreak).length;
-  const nos=flagged.filter(f=>f.noSubmit).length;
+  const nos=flagged.filter(f=>f.missedRecent).length;
+  const span = last3&&last3.length ? ` (${fmtShort(last3[0])}–${fmtShort(last3[last3.length-1])})` : '';
   document.getElementById('flagNum').textContent=n;
   document.getElementById('flagLbl').textContent = n===0 ? 'No schools flagged' : (n===1?'school flagged':'schools flagged');
   document.getElementById('flagHint').textContent = n===0
-    ? `No red streaks or missing-report streaks across ${days.length} reporting days`
-    : `${reds} red on ${RED_STREAK_DAYS} days running · ${nos} no report in last ${NOSUBMIT_DAYS} days · click for the list`;
+    ? `No red streaks or missed reporting in the last ${last3?last3.length:RECENT_DAYS} reporting days`
+    : `${reds} red on ${RED_STREAK_DAYS} days running · ${nos} missed a day in the last ${last3?last3.length:RECENT_DAYS}${span} · click for the list`;
 }
 
 // ---- flagged-schools modal ----
-let FM_TAB='all';
-function openFlag(){ FM_TAB='all'; document.getElementById('fmSearch').value='';
-  document.querySelectorAll('#fmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t==='all'));
+let FM_TAB='red';
+function openFlag(){ FM_TAB='red'; document.getElementById('fmSearch').value='';
+  document.querySelectorAll('#fmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t==='red'));
   renderFlagModal(); document.getElementById('flagModal').classList.add('show'); }
 function closeFlag(){ document.getElementById('flagModal').classList.remove('show'); }
 function renderFlagModal(){
@@ -935,16 +953,17 @@ function renderFlagModal(){
   const q=(document.getElementById('fmSearch').value||'').trim().toLowerCase();
   let list=flagged.slice();
   if(FM_TAB==='red') list=list.filter(f=>f.redStreak);
-  else if(FM_TAB==='nosubmit') list=list.filter(f=>f.noSubmit);
+  else if(FM_TAB==='nosubmit') list=list.filter(f=>f.missedRecent);
   list.sort((a,b)=> (b.redStreak?1:0)-(a.redStreak?1:0) || a.name.localeCompare(b.name));
   if(q) list=list.filter(f=>f.name.toLowerCase().includes(q)||String(f.udise).includes(q));
   const el=document.getElementById('fmList');
   if(!list.length){ el.innerHTML=`<div class="slrow"><span class="ud">No schools match.</span></div>`; return; }
-  el.innerHTML=list.map(f=>{
+  el.innerHTML=list.map((f,i)=>{
     const badges=[];
     if(f.redStreak) badges.push(`<span class="badge no">Red ${f.redStreak.length} days (${fmtShort(f.redStreak[0])}–${fmtShort(f.redStreak[f.redStreak.length-1])})</span>`);
-    if(f.noSubmit) badges.push(`<span class="badge warn">No report ${NOSUBMIT_DAYS}+ days</span>`);
-    return `<div class="slrow" data-profile="${f.udise}" role="button" tabindex="0"><div><div class="nm">${f.name}</div><div class="ud">UDISE ${f.udise}</div></div>
+    if(f.missedRecent){ const md=(f.missedDays||[]).map(fmtShort).join(', ');
+      badges.push(`<span class="badge warn">Missed ${f.missedDays.length} of last ${RECENT_DAYS}${md?`: ${md}`:''}</span>`); }
+    return `<div class="slrow" data-profile="${f.udise}" role="button" tabindex="0"><div><div class="nm"><span class="sn">${i+1}.</span> ${f.name}</div><div class="ud">UDISE ${f.udise}</div></div>
       <span class="rsn">${badges.join('')}</span></div>`;
   }).join('');
 }
@@ -1156,12 +1175,13 @@ function renderProfile(){
     issues=issuesHtml(byCode, streak.length);
     const top=[...byCode.entries()].sort((a,b)=>b[1].days.size-a[1].days.size)[0];
     if(top) problem=`Core problem: ${flagLabel(top[0])} — recurring on ${top[1].days.size} of the ${streak.length} flagged days.`;
-    if(entry.noSubmit) desc+=` It has also stopped submitting in the last ${NOSUBMIT_DAYS} reporting days.`;
-  } else if(entry && entry.noSubmit){
+    if(entry.missedRecent) desc+=` It also missed reporting on ${entry.missedDays.length} of the last ${RECENT_DAYS} reporting days (${entry.missedDays.map(fmtShort).join(', ')}).`;
+  } else if(entry && entry.missedRecent){
     sev='warn';
-    headline=`Flagged: no submission in the last ${NOSUBMIT_DAYS} reporting days.`;
-    desc=`No daily meal photos or video were uploaded on any of the last ${NOSUBMIT_DAYS} days the block reported. The meal cannot be verified for this school.`;
-    problem=`Core problem: the school has gone silent — follow up on why nothing is being submitted.`;
+    const md=entry.missedDays.map(fmtShort).join(', ');
+    headline=`Flagged: missed reporting on ${entry.missedDays.length} of the last ${RECENT_DAYS} reporting days (${md}).`;
+    desc=`No daily meal photos or video were uploaded on ${entry.missedDays.length===1?'that day':'those days'}. The meal cannot be verified for ${entry.missedDays.length===1?'it':'them'}.`;
+    problem=`Core problem: gaps in daily reporting — follow up on why nothing was submitted on ${md}.`;
   } else if(totalRed){
     sev='red';
     const recent=rows.filter(r=>r.severity==='red').sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
@@ -1172,7 +1192,7 @@ function renderProfile(){
   } else {
     sev='ok';
     headline=`No standing flags — clean across the ${rows.length} recorded day${rows.length===1?'':'s'}.`;
-    desc=`No red streak and no missing-report streak. Day-by-day record below.`;
+    desc=`No red streak and no missed reporting in the last ${RECENT_DAYS} reporting days. Day-by-day record below.`;
     problem=`No action needed based on the automated screen.`;
   }
 
@@ -1261,6 +1281,37 @@ document.getElementById('fmSearch').addEventListener('input',renderFlagModal);
 // profile view wiring (in-page, not a modal)
 document.getElementById('pfBack').addEventListener('click',closeProfile);
 
+// ---- top-right school jump (UDISE code or name → that school's history) ----
+function buildSchoolList(){
+  const dl=document.getElementById('schoolList'); if(!dl) return;
+  const seen=new Set(); const opts=[];
+  const add=(u,n)=>{ u=String(u||'').trim(); if(!u||seen.has(u)) return; seen.add(u); opts.push(`<option value="${u} — ${(n||'').replace(/"/g,'')}"></option>`); };
+  ROSTER.forEach(s=>add(s.udise,s.name));
+  ROWS.forEach(r=>{ if(r.school) add(r.school.udise,r.school.name); }); // any submitters not in roster
+  dl.innerHTML=opts.join('');
+}
+function jumpToSchool(){
+  const raw=(document.getElementById('schoolJump').value||'').trim();
+  if(!raw) return;
+  const digits=(raw.match(/\d{6,}/)||[])[0];           // a UDISE code appears in "code — name" and in raw entry
+  let u=digits||'';
+  if(!u){                                               // typed a name only → match roster by name
+    const low=raw.toLowerCase();
+    const hit=ROSTER.find(s=>String(s.name||'').toLowerCase()===low)
+            ||ROSTER.find(s=>String(s.name||'').toLowerCase().includes(low));
+    if(hit) u=String(hit.udise).trim();
+  }
+  if(!u){ alert('No matching school. Type a UDISE code or pick a name from the list.'); return; }
+  const known=ROSTER.some(s=>String(s.udise).trim()===u)||ROWS.some(r=>(r.school&&String(r.school.udise).trim())===u);
+  if(!known){ alert(`UDISE ${u} is not in this block's roster.`); return; }
+  document.getElementById('schoolJump').value='';
+  openProfile(u);
+}
+document.getElementById('schoolJumpGo').addEventListener('click',jumpToSchool);
+document.getElementById('schoolJump').addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); jumpToSchool(); }});
+// jump immediately when a datalist option is picked (its value ends with " — name")
+document.getElementById('schoolJump').addEventListener('change',(e)=>{ if(/\s—\s/.test(e.target.value)) jumpToSchool(); });
+
 document.addEventListener('keydown',(e)=>{
   if(e.key==='Escape'){ if(profileOpen()) closeProfile(); closeRoster(); closeFlag(); }
   if((e.key==='Enter'||e.key===' ')){
@@ -1285,6 +1336,7 @@ function updateDateline(){
 
 (async function init(){
   [ROWS, ROSTER] = await Promise.all([loadData(), loadRoster()]);
+  buildSchoolList();
   populateDates();
   updateDateline();
   render();
