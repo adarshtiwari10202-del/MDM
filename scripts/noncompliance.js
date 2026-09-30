@@ -122,6 +122,27 @@ async function main() {
   console.log(flagged
     ? `  ⚠ ${flagged} never-reported school(s) DID appear in raw rows — review before sending.`
     : '  ✓ none of the never-reported schools appear anywhere in the daily form (by UDISE or name). List is clean.');
+
+  // ---- CHECK_DATE scan: who submitted on a date OUTSIDE the window (e.g. today) ----
+  // A school that filed on CHECK_DATE should not be called "never reported" or
+  // "recently stopped", even if it had nothing inside the 18–29 window.
+  const CHECK = process.env.CHECK_DATE || '2026-09-30';
+  const subCheck = new Set();
+  for (const r of rows) {
+    const eff = effectiveDate(cols.date ? toISODate(r[cols.date]) : null,
+                              cols.timestamp ? toISODateTime(r[cols.timestamp]) : null);
+    if (eff.date !== CHECK) continue;
+    let u = norm(cols.udise ? r[cols.udise] : '');
+    if (!/^\d{6,}$/.test(u)) u = udiseFrom(cols.school ? r[cols.school] : '');
+    if (/^\d{6,}$/.test(u)) subCheck.add(u);
+  }
+  const inNever = never.filter((r) => subCheck.has(r.udise));
+  const inSilent = droppedOff.filter((r) => subCheck.has(r.udise));
+  console.log(`\n===== CHECK_DATE ${CHECK}: listed schools that actually reported that day =====`);
+  console.log(`  NEVER-list schools that reported on ${CHECK} (remove from List 1): ${inNever.length}`);
+  inNever.forEach((r) => console.log(`     - ${r.udise} ${r.name}`));
+  console.log(`  RECENTLY-STOPPED schools that reported on ${CHECK} (remove from List 2): ${inSilent.length}`);
+  inSilent.forEach((r) => console.log(`     - ${r.udise} ${r.name}`));
 }
 
 main().catch((e) => { console.error('[noncompliance] FAILED:', e); process.exit(1); });
