@@ -1,7 +1,11 @@
 name: Missed last 3 days
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      days:
+        description: Comma-separated reporting dates to check (YYYY-MM-DD)
+        default: '2026-09-28,2026-09-29,2026-09-30'
 
 permissions:
   contents: write
@@ -22,6 +26,7 @@ jobs:
           DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
           DAILY_SHEET_TAB: Form Responses 1
           ROSTER_SHEET_TAB: Sheet1
+          DAYS: ${{ github.event.inputs.days }}
         run: node scripts/missed3days.js
       - name: Commit authoritative JSON
         run: |

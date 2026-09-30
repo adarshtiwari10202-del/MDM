@@ -13,7 +13,7 @@ import { resolveColumns, toISODate, toISODateTime, effectiveDate } from '../back
 
 const norm = (u) => String(u || '').trim();
 const udiseFrom = (s) => { const m = String(s || '').match(/\b(\d{8,15})\b/); return m ? m[1] : ''; };
-const DAYS = ['2026-09-28', '2026-09-29', '2026-09-30'];
+const DAYS = (process.env.DAYS ? process.env.DAYS.split(',').map((s) => s.trim()) : ['2026-09-28', '2026-09-29', '2026-09-30']);
 const CUTOFF_DAY = '2026-09-30';
 const CUTOFF_TIME = '19:00:00'; // 7 PM IST inclusive
 
@@ -29,7 +29,7 @@ async function main() {
 
   // Per-udise set of the three target days it reported on (30 Sep gated by 7 PM).
   const byUdise = new Map();
-  const perDayRows = { '2026-09-28': 0, '2026-09-29': 0, '2026-09-30': 0 };
+  const perDayRows = Object.fromEntries(DAYS.map((d) => [d, 0]));
   let excluded30 = [];       // 30-Sep rows AFTER 7 PM (excluded)
   for (const r of rows) {
     const tsISO = cols.timestamp ? toISODateTime(r[cols.timestamp]) : null;
