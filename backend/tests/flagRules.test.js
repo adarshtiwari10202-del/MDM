@@ -200,6 +200,18 @@ const neither = evaluateSubmission(base(['rice', ...DYS],
 check('dal-yukt sabzi: BOTH dal and sabzi absent → menu_missing', codes(neither).includes('menu_missing') &&
   neither.flags.find((f) => f.code === 'menu_missing').message.includes('dal/sabzi'));
 
+// --- compound sabzi names count as sabzi ("aloo sabzi", "soya badi sabzi") ---
+const alooSabzi = evaluateSubmission(base(['roti', 'sabzi'],
+  mkFiles({ dishes_visible: ['roti', 'aloo sabzi'], menu_items_present: { sabzi: false } })));
+check('"aloo sabzi" satisfies sabzi → no menu_missing', !codes(alooSabzi).includes('menu_missing'));
+const soyaSabzi = evaluateSubmission(base(['roti', 'sabzi'],
+  mkFiles({ dishes_visible: ['roti', 'soya badi sabzi'], menu_items_present: { sabzi: false } })));
+check('"soya badi sabzi" satisfies sabzi → no menu_missing', !codes(soyaSabzi).includes('menu_missing'));
+// dal-yukt sabzi satisfied via a compound sabzi name
+const dysCompound = evaluateSubmission(base(['rice', { anyOf: ['dal', 'sabzi'] }],
+  mkFiles({ dishes_visible: ['rice', 'aloo sabzi'], menu_items_present: { dal: false } })));
+check('dal-yukt sabzi met by "aloo sabzi" → no menu_missing', !codes(dysCompound).includes('menu_missing'));
+
 // getMenu now prescribes dal-yukt sabzi (anyOf dal/sabzi) on Tue/Thu/Sat.
 const tue = getMenu('2026-09-22'); // Tuesday
 check('getMenu Tue → rice + {anyOf dal/sabzi}', tue.length === 2 && tue[0] === 'rice' &&

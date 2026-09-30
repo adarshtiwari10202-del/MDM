@@ -189,16 +189,20 @@ export function evaluateSubmission(submission, config = {}) {
 
   // --- AI check: menu compliance ---
   const itemLabel = (item) => (typeof item === 'string' ? item : (item.anyOf || []).join('/'));
+  // Any compound "…sabzi/sabji/bhaji" dish (e.g. "aloo sabzi", "soya badi
+  // sabzi", "potato sabzi") counts as the generic sabzi requirement.
+  const SABZI_RE = /sab[zj]i|bhaji/;
+  const addSeen = (seen, raw) => { const nd = normDish(raw); seen.add(nd); if (SABZI_RE.test(nd)) seen.add('sabzi'); };
   // Set of dishes visibly present across the given stages (+ category members).
   const gatherSeen = (keys) => {
     const seen = new Set();
     for (const k of keys) {
       const ai = files[k]?.ai;
       if (!ai) continue;
-      (ai.dishes_visible || []).forEach((d) => seen.add(normDish(d)));
+      (ai.dishes_visible || []).forEach((d) => addSeen(seen, d));
       if (ai.menu_items_present) {
         for (const [item, present] of Object.entries(ai.menu_items_present)) {
-          if (present) seen.add(normDish(item));
+          if (present) addSeen(seen, item);
         }
       }
     }

@@ -18,12 +18,14 @@ const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const istWeekday = (d) => new Date(`${d}T12:00:00+05:30`).getUTCDay();
 const hasAI = (f) => { const a = f && f.ai; return !!(a && typeof a === 'object' && (a.scene_type || (a.dishes_visible && a.dishes_visible.length) || a.menu_items_present || a.food_present != null)); };
 
+const SABZI_RE = /sab[zj]i|bhaji/;
+const addSeen = (seen, raw) => { const nd = normDish(raw); seen.add(nd); if (SABZI_RE.test(nd)) seen.add('sabzi'); };
 function gatherSeen(row, keys) {
   const seen = new Set();
   for (const k of keys) {
     const ai = row.files?.[k]?.ai; if (!ai) continue;
-    (ai.dishes_visible || []).forEach((d) => seen.add(normDish(d)));
-    if (ai.menu_items_present) for (const [it, v] of Object.entries(ai.menu_items_present)) if (v === true) seen.add(normDish(it));
+    (ai.dishes_visible || []).forEach((d) => addSeen(seen, d));
+    if (ai.menu_items_present) for (const [it, v] of Object.entries(ai.menu_items_present)) if (v === true) addSeen(seen, it);
   }
   return seen;
 }
