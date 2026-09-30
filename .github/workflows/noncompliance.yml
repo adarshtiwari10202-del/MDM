@@ -1,7 +1,14 @@
 name: Daily non-compliance lists
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      date_min:
+        description: Earliest reporting date to count (YYYY-MM-DD, inclusive; blank = all)
+        default: ''
+      date_max:
+        description: Latest reporting date to count (YYYY-MM-DD, inclusive; blank = all)
+        default: ''
 
 jobs:
   noncompliance:
@@ -19,4 +26,6 @@ jobs:
           DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
           DAILY_SHEET_TAB: Form Responses 1
           ROSTER_SHEET_TAB: Sheet1
+          DATE_MIN: ${{ github.event.inputs.date_min }}
+          DATE_MAX: ${{ github.event.inputs.date_max }}
         run: node scripts/noncompliance.js
