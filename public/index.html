@@ -109,8 +109,13 @@
   .attend:hover{box-shadow:0 4px 14px rgba(0,49,107,.10)}
   .attend:active{transform:translateY(1px)}
   .attend.ok{border-left-color:var(--teal)}
+  .attend.warn{border-left-color:var(--gold,#e0a92e)}
+  .flagrow{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .flagrow .attend{margin-bottom:16px}
+  @media(max-width:640px){ .flagrow{grid-template-columns:1fr;gap:0} }
   .attend .big{font-family:"Archivo",sans-serif;font-weight:800;font-size:30px;color:var(--red);line-height:1}
   .attend.ok .big{color:var(--teal)}
+  .attend.warn .big{color:var(--gold,#e0a92e)}
   .attend .txt{flex:1;min-width:0}
   .attend .lbl{font-size:14px;font-weight:700;color:var(--ink)}
   .attend .hint{font-size:12px;color:var(--grey);margin-top:2px}
@@ -216,13 +221,23 @@
 
   <div class="wrap">
    <div id="mainView">
-    <div class="attend flag" id="flagBanner" role="button" tabindex="0" style="display:none">
-      <div class="big" id="flagNum">—</div>
-      <div class="txt">
-        <div class="lbl" id="flagLbl">Schools flagged</div>
-        <div class="hint" id="flagHint"></div>
+    <div class="flagrow" id="flagRow" style="display:none">
+      <div class="attend flag" id="flagQuality" role="button" tabindex="0">
+        <div class="big" id="fqNum">—</div>
+        <div class="txt">
+          <div class="lbl">Meal-quality flags</div>
+          <div class="hint" id="fqHint"></div>
+        </div>
+        <div class="cta">View list ›</div>
       </div>
-      <div class="cta">View list ›</div>
+      <div class="attend flag warn" id="flagReporting" role="button" tabindex="0">
+        <div class="big" id="frNum">—</div>
+        <div class="txt">
+          <div class="lbl">Reporting gaps (last 3 days)</div>
+          <div class="hint" id="frHint"></div>
+        </div>
+        <div class="cta">View list ›</div>
+      </div>
     </div>
 
     <div class="datebar">
@@ -923,33 +938,43 @@ function schoolFlags(){
 }
 
 function renderFlagged(){
-  const el=document.getElementById('flagBanner');
+  const row=document.getElementById('flagRow');
   const { flagged, days, last3 }=schoolFlags();
-  if(!days.length){ el.style.display='none'; return; } // no data yet
-  el.style.display='flex';
-  const n=flagged.length;
-  el.classList.toggle('ok', n===0);
+  if(!days.length){ row.style.display='none'; return; } // no data yet
+  row.style.display='grid';
+  const win = last3&&last3.length ? last3.length : RECENT_DAYS;
+  const span = last3&&last3.length ? `${fmtShort(last3[0])}–${fmtShort(last3[last3.length-1])}` : '';
+  // --- Tile 1: meal-quality (red on the last streak) ---
   const reds=flagged.filter(f=>f.redStreak).length;
+  const qEl=document.getElementById('flagQuality');
+  qEl.classList.toggle('ok', reds===0);
+  document.getElementById('fqNum').textContent=reds;
+  document.getElementById('fqHint').textContent = reds===0
+    ? `No school red on ${RED_STREAK_DAYS} reporting days running`
+    : `Red flags on the last ${RED_STREAK_DAYS} reporting days running · click for the list`;
+  // --- Tile 2: reporting gaps (missed a day of the last 3) ---
   const nos=flagged.filter(f=>f.missedRecent).length;
-  const span = last3&&last3.length ? ` (${fmtShort(last3[0])}–${fmtShort(last3[last3.length-1])})` : '';
-  document.getElementById('flagNum').textContent=n;
-  document.getElementById('flagLbl').textContent = n===0 ? 'No schools flagged' : (n===1?'school flagged':'schools flagged');
-  document.getElementById('flagHint').textContent = n===0
-    ? `No red streaks or missed reporting in the last ${last3?last3.length:RECENT_DAYS} reporting days`
-    : `${reds} red on ${RED_STREAK_DAYS} days running · ${nos} missed a day in the last ${last3?last3.length:RECENT_DAYS}${span} · click for the list`;
+  const rEl=document.getElementById('flagReporting');
+  rEl.classList.toggle('ok', nos===0);
+  document.getElementById('frNum').textContent=nos;
+  document.getElementById('frHint').textContent = nos===0
+    ? `Every school reported on all of the last ${win} reporting days`
+    : `Missed reporting on ≥1 of the last ${win} reporting days${span?` (${span})`:''} · click for the list`;
 }
 
 // ---- flagged-schools modal ----
 let FM_TAB='red';
-function openFlag(){ FM_TAB='red'; document.getElementById('fmSearch').value='';
-  document.querySelectorAll('#fmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t==='red'));
+function openFlag(tab){ FM_TAB=(tab==='nosubmit'||tab==='red')?tab:'red'; document.getElementById('fmSearch').value='';
+  document.querySelectorAll('#fmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t===FM_TAB));
   renderFlagModal(); document.getElementById('flagModal').classList.add('show'); }
 function closeFlag(){ document.getElementById('flagModal').classList.remove('show'); }
 function renderFlagModal(){
-  const { flagged, days }=schoolFlags();
-  const span = days.length ? ` (${fmtShort(days[0])} – ${fmtShort(days[days.length-1])})` : '';
+  const { flagged, days, last3 }=schoolFlags();
+  const reds=flagged.filter(f=>f.redStreak).length;
+  const nos=flagged.filter(f=>f.missedRecent).length;
+  const span = last3&&last3.length ? ` (${fmtShort(last3[0])}–${fmtShort(last3[last3.length-1])})` : '';
   document.getElementById('fmSub').textContent =
-    `${flagged.length} flagged · ${days.length} reporting days${span}`;
+    `${reds} meal-quality (red ${RED_STREAK_DAYS} days running) · ${nos} reporting gaps${span} · ${days.length} reporting days on record`;
   const q=(document.getElementById('fmSearch').value||'').trim().toLowerCase();
   let list=flagged.slice();
   if(FM_TAB==='red') list=list.filter(f=>f.redStreak);
@@ -1265,10 +1290,13 @@ document.getElementById('rmTabs').addEventListener('click',(e)=>{
 });
 document.getElementById('rmSearch').addEventListener('input',renderRosterModal);
 
-// flagged-schools modal wiring
-const flagEl=document.getElementById('flagBanner');
-flagEl.addEventListener('click',openFlag);
-flagEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openFlag(); }});
+// flagged-schools tiles → open the modal on the matching tab
+const fqEl=document.getElementById('flagQuality');
+fqEl.addEventListener('click',()=>openFlag('red'));
+fqEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openFlag('red'); }});
+const frEl=document.getElementById('flagReporting');
+frEl.addEventListener('click',()=>openFlag('nosubmit'));
+frEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openFlag('nosubmit'); }});
 document.getElementById('fmClose').addEventListener('click',closeFlag);
 document.getElementById('flagModal').addEventListener('click',(e)=>{ if(e.target.id==='flagModal') closeFlag(); });
 document.getElementById('fmTabs').addEventListener('click',(e)=>{
