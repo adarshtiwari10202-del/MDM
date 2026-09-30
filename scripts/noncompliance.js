@@ -22,12 +22,17 @@ async function main() {
     date: ["today's date", 'today date', 'date'],
   });
 
+  // Optional window so an in-progress day (or rollout days) can be excluded.
+  const DMIN = process.env.DATE_MIN || null; // inclusive lower bound
+  const DMAX = process.env.DATE_MAX || null; // inclusive upper bound
   const allDates = new Set();
   const byUdise = new Map(); // udise -> Set(date)
   for (const r of rows) {
     const eff = effectiveDate(cols.date ? toISODate(r[cols.date]) : null,
                               cols.timestamp ? toISODateTime(r[cols.timestamp]) : null);
     if (!eff.date) continue;
+    if (DMIN && eff.date < DMIN) continue;
+    if (DMAX && eff.date > DMAX) continue;
     allDates.add(eff.date);
     let u = norm(cols.udise ? r[cols.udise] : '');
     if (!/^\d{6,}$/.test(u)) u = udiseFrom(cols.school ? r[cols.school] : '');
