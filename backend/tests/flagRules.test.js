@@ -2,6 +2,7 @@
 import { evaluateSubmission } from '../flagRules.js';
 import { processAll } from '../pipeline.js';
 import { SAMPLE_SUBMISSIONS } from '../sampleData/submissions.js';
+import { getMenu } from '../menu.js';
 
 let pass = 0, fail = 0;
 function check(name, cond) {
@@ -185,6 +186,28 @@ const someGeo = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['ri
   cooking: { location: { lat: 27.5, lng: 80.7 }, ai: { cooking_in_progress: true } },
 })));
 check('at least one geo-tagged photo → no geo_missing', !codes(someGeo).includes('geo_missing'));
+
+// --- dal-yukt sabzi: {anyOf:['dal','sabzi']} satisfied by either, flagged only if BOTH absent ---
+const DYS = [{ anyOf: ['dal', 'sabzi'] }];
+const dalOnly = evaluateSubmission(base(['rice', ...DYS],
+  mkFiles({ dishes_visible: ['rice', 'dal'], menu_items_present: { sabzi: false } })));
+check('dal-yukt sabzi: only dal visible → no menu_missing', !codes(dalOnly).includes('menu_missing'));
+const sabziOnly = evaluateSubmission(base(['rice', ...DYS],
+  mkFiles({ dishes_visible: ['rice', 'sabzi'], menu_items_present: { dal: false } })));
+check('dal-yukt sabzi: only sabzi visible → no menu_missing', !codes(sabziOnly).includes('menu_missing'));
+const neither = evaluateSubmission(base(['rice', ...DYS],
+  mkFiles({ dishes_visible: ['rice'], menu_items_present: { dal: false, sabzi: false } })));
+check('dal-yukt sabzi: BOTH dal and sabzi absent → menu_missing', codes(neither).includes('menu_missing') &&
+  neither.flags.find((f) => f.code === 'menu_missing').message.includes('dal/sabzi'));
+
+// getMenu now prescribes dal-yukt sabzi (anyOf dal/sabzi) on Tue/Thu/Sat.
+const tue = getMenu('2026-09-22'); // Tuesday
+check('getMenu Tue → rice + {anyOf dal/sabzi}', tue.length === 2 && tue[0] === 'rice' &&
+  Array.isArray(tue[1].anyOf) && tue[1].anyOf.includes('dal') && tue[1].anyOf.includes('sabzi'));
+const thu = getMenu('2026-09-24'); // Thursday
+check('getMenu Thu → roti + {anyOf dal/sabzi}', thu.length === 2 && thu[0] === 'roti' && !!thu[1].anyOf);
+const sat = getMenu('2026-09-19'); // Saturday
+check('getMenu Sat → rice + {anyOf dal/sabzi}', sat.length === 2 && sat[0] === 'rice' && !!sat[1].anyOf);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

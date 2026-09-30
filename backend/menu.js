@@ -10,14 +10,18 @@
 // ============================================================
 
 // day index: 0=Sun .. 6=Sat  (IST weekday of the meal date)
+// "Dal-yukt sabzi" (dal + vegetable, served together) is treated as ONE
+// requirement satisfied when EITHER dal OR sabzi (or both) is visible — it is
+// flagged only when NEITHER appears. It is written as { anyOf: ['dal','sabzi'] }
+// on every day that prescribes dal-with-sabzi (Tue, Thu, Sat).
 export const WEEKLY_MENU = {
   0: [], // Sunday — no school meal
-  1: ['roti', 'sabzi', 'fruit'],                 // Mon: roti + soya-badi seasonal sabzi + fresh fruit
-  2: ['rice', 'dal', 'sabzi'],                   // Tue: rice + dal + seasonal sabzi
-  3: ['tehri', 'milk'],                          // Wed: veg + soya-badi tehri + hot boiled milk (mandatory)
-  4: ['roti', 'dal', 'sabzi'],                   // Thu: roti + dal + seasonal sabzi
-  5: [{ anyOf: ['tehri', 'khichdi'] }, 'sabzi'], // Fri: veg+soya tehri  OR  bajra+moong khichdi (+ seasonal veg)
-  6: ['rice', 'dal', 'sabzi'],                   // Sat: rice + dal + seasonal sabzi
+  1: ['roti', 'sabzi', 'fruit'],                        // Mon: roti + soya-badi seasonal sabzi + fresh fruit
+  2: ['rice', { anyOf: ['dal', 'sabzi'] }],             // Tue: rice + dal-yukt sabzi (dal OR sabzi)
+  3: ['tehri', 'milk'],                                 // Wed: veg + soya-badi tehri + hot boiled milk (mandatory)
+  4: ['roti', { anyOf: ['dal', 'sabzi'] }],             // Thu: roti + dal-yukt sabzi (dal OR sabzi)
+  5: [{ anyOf: ['tehri', 'khichdi'] }, 'sabzi'],        // Fri: veg+soya tehri  OR  bajra+moong khichdi (+ seasonal veg)
+  6: ['rice', { anyOf: ['dal', 'sabzi'] }],             // Sat: rice + dal-yukt sabzi (dal OR sabzi)
 };
 
 // Wednesday additionally mandates hot boiled milk with the meal (already listed).
