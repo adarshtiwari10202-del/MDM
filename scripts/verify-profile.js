@@ -17,14 +17,11 @@ const norm = (u) => String(u || '').trim();
 const digits = (s) => String(s || '').replace(/\D/g, '');
 const udiseFrom = (s) => { const m = String(s || '').match(/\b(\d{8,15})\b/); return m ? m[1] : ''; };
 
-// The 5 currently reported as NOT submitted — verify each one hard.
-const TARGETS = [
-  { udise: '9240515201', name: 'DALJEETPURWA' },
-  { udise: '9240505003', name: 'GURDHAPA' },
-  { udise: '9240511003', name: 'KAJIPUR' },
-  { udise: '9240506802', name: 'KAKRAHI' },
-  { udise: '9240511901', name: 'KANYA HARGAON' },
-];
+// Schools to verify hard (raw cell scan). Override via VERIFY_TARGETS env as
+// "udise:NAME;udise:NAME"; otherwise the default below.
+const TARGETS = (process.env.VERIFY_TARGETS
+  ? process.env.VERIFY_TARGETS.split(';').map((s) => { const [udise, ...n] = s.split(':'); return { udise: udise.trim(), name: n.join(':').trim() }; })
+  : [{ udise: '9240511003', name: 'KAJIPUR' }]);
 
 async function main() {
   const sheetId = process.env.PROFILE_SHEET_ID;
