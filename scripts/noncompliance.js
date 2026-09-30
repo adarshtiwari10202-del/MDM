@@ -73,6 +73,25 @@ async function main() {
   }
   console.log('\n[noncompliance] submission-rate distribution (of days present):');
   for (const [k, v] of Object.entries(buckets)) console.log(`   ${k.padEnd(8)} ${v}`);
+
+  // --- List 3: recently gone silent — no report in the last RECENT reporting days ---
+  const RECENT = Math.max(1, Number(process.env.RECENT_DAYS || 4));
+  const recentDays = days.slice(-RECENT);
+  const priorDays = days.slice(0, -RECENT);
+  const hasAny = (set, ds) => ds.some((d) => set.has(d));
+  const silentAll = [], droppedOff = [];
+  for (const s of roster) {
+    const set = byUdise.get(norm(s.udise)) || new Set();
+    if (hasAny(set, recentDays)) continue; // reported recently → not silent
+    const rec = { udise: norm(s.udise), name: s.name, everBefore: hasAny(set, priorDays), sub: set.size };
+    silentAll.push(rec);
+    if (rec.everBefore) droppedOff.push(rec);
+  }
+  droppedOff.sort((a, b) => a.name.localeCompare(b.name));
+  console.log(`\n[noncompliance] recent window (last ${RECENT} reporting days): ${recentDays.join(', ')}`);
+  console.log(`\n===== LIST 3 — RECENTLY GONE SILENT: reported earlier but NOT in last ${RECENT} days (${droppedOff.length}) =====`);
+  droppedOff.forEach((r, i) => console.log(`${String(i + 1).padStart(3)}. ${r.udise}  ${r.name}  (last active before ${recentDays[0]}, ${r.sub} days total)`));
+  console.log(`\n[noncompliance] (schools with no report in last ${RECENT} days, INCLUDING never-submitted: ${silentAll.length})`);
 }
 
 main().catch((e) => { console.error('[noncompliance] FAILED:', e); process.exit(1); });
