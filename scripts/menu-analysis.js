@@ -61,12 +61,15 @@ async function main() {
     const labels = menuDishList(menu);
     console.log(`\n=== ${date} (${WD[istWeekday(date)]}) — ${dayRows.length} submissions — prescribed: ${labels.join(', ') || '(none)'} ===`);
 
-    // component presence
+    // component presence — a dish counts as present if visible in ANY of the
+    // four media (cooking photo, cooked-meal pot, serving video, or plate),
+    // matching the flag engine.
+    const STAGES = ['cooking', 'cooked_meal', 'serving_video', 'plate'];
     for (const item of menu) {
       let p = 0, a = 0, u = 0;
       for (const r of dayRows) {
-        const seen = gatherSeen(r, ['cooked_meal', 'plate']);
-        const mip = gatherMip(r, ['cooked_meal', 'plate']);
+        const seen = gatherSeen(r, STAGES);
+        const mip = gatherMip(r, STAGES);
         const s = status(item, seen, mip);
         if (s === 'present') p++; else if (s === 'absent') a++; else u++;
       }

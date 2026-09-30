@@ -72,24 +72,43 @@ const geo = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['rice']
 })));
 check('photos far apart → geo_inconsistent', codes(geo).includes('geo_inconsistent'));
 
-// --- plate_menu_missing: dish cooked in pot but clearly absent from the plate ---
-const pm = evaluateSubmission(base(['rice', 'dal', 'sabzi'], {
+// --- menu compliance across ALL media: a dish visible in ANY photo/video is
+//     compliant, even if it is absent from the final plate close-up ---
+// sabzi is in the pot (and explicitly marked absent on the plate) → compliant.
+const potNotPlate = evaluateSubmission(base(['rice', 'dal', 'sabzi'], {
   cooking: { ai: { scene_type: 'cooking', cooking_in_progress: true } },
   cooked_meal: { ai: { food_present: true, dishes_visible: ['rice', 'dal', 'sabzi'], menu_items_present: { rice: true, dal: true, sabzi: true } } },
   serving_video: { ai: { food_present: true } },
   plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice', 'dal'], menu_items_present: { rice: true, dal: true, sabzi: false } } },
 }));
-check('plate_menu_missing when sabzi absent from plate', codes(pm).includes('plate_menu_missing'));
-check('menu_missing NOT raised (sabzi was in the pot)', !codes(pm).includes('menu_missing'));
+check('sabzi in pot but absent from plate → compliant (no menu_missing)', !codes(potNotPlate).includes('menu_missing'));
 
-// unclear on the plate must NOT trigger plate_menu_missing
-const pu = evaluateSubmission(base(['rice', 'dal', 'sabzi'], {
+// roti visible ONLY in the serving video (marked absent in pot and plate) → compliant.
+const rotiInVideo = evaluateSubmission(base(['roti', 'sabzi'], {
   cooking: { ai: { cooking_in_progress: true } },
-  cooked_meal: { ai: { food_present: true, dishes_visible: ['rice', 'dal', 'sabzi'], menu_items_present: { rice: true, dal: true, sabzi: true } } },
-  serving_video: { ai: { food_present: true } },
-  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice', 'dal'], menu_items_present: { rice: true, dal: true } } }, // sabzi omitted = unclear
+  cooked_meal: { ai: { food_present: true, dishes_visible: ['sabzi'], menu_items_present: { sabzi: true, roti: false } } },
+  serving_video: { ai: { food_present: true, dishes_visible: ['roti'] } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['sabzi'], menu_items_present: { sabzi: true, roti: false } } },
 }));
-check('unclear plate dish does NOT flag plate_menu_missing', !codes(pu).includes('plate_menu_missing'));
+check('roti seen only in the serving video → compliant (no menu_missing)', !codes(rotiInVideo).includes('menu_missing'));
+
+// roti visible ONLY in the cooking photo (marked absent later) → compliant.
+const rotiInCooking = evaluateSubmission(base(['roti'], {
+  cooking: { ai: { cooking_in_progress: true, dishes_visible: ['roti'] } },
+  cooked_meal: { ai: { food_present: true, dishes_visible: [], menu_items_present: { roti: false } } },
+  serving_video: { ai: { food_present: true } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: [], menu_items_present: { roti: false } } },
+}));
+check('roti seen only in the cooking photo → compliant (no menu_missing)', !codes(rotiInCooking).includes('menu_missing'));
+
+// dish confirmed absent in EVERY media → menu_missing fires.
+const sabziNowhere = evaluateSubmission(base(['rice', 'sabzi'], {
+  cooking: { ai: { cooking_in_progress: true } },
+  cooked_meal: { ai: { food_present: true, dishes_visible: ['rice'], menu_items_present: { rice: true, sabzi: false } } },
+  serving_video: { ai: { food_present: true } },
+  plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice'], menu_items_present: { rice: true, sabzi: false } } },
+}));
+check('sabzi confirmed absent in every media → menu_missing fires', codes(sabziNowhere).includes('menu_missing'));
 
 // --- duplicate scope: only cross-submission reuse flags (red); a file reused
 //     across one submission's own slots is NOT flagged (amber removed) ---
@@ -165,8 +184,7 @@ const geoBig = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['ric
 })));
 check('photos ~300m apart (big campus) do NOT flag geo_inconsistent', !codes(geoBig).includes('geo_inconsistent'));
 
-// --- one flag per missing menu item (menu_missing and plate_menu_missing must
-//     not BOTH fire for the same dish) ---
+// --- one flag per missing menu item (a dish absent everywhere flags once) ---
 const dedupe = evaluateSubmission(base(['rice', 'dal', 'sabzi'], {
   cooking: { ai: { cooking_in_progress: true } },
   cooked_meal: { ai: { food_present: true, dishes_visible: ['rice', 'dal'], menu_items_present: { rice: true, dal: true, sabzi: false } } },
@@ -174,8 +192,7 @@ const dedupe = evaluateSubmission(base(['rice', 'dal', 'sabzi'], {
   plate: { ai: { scene_type: 'served_plate', dishes_visible: ['rice', 'dal'], menu_items_present: { rice: true, dal: true, sabzi: false } } },
 }));
 check('sabzi missing everywhere → menu_missing fires', codes(dedupe).includes('menu_missing'));
-check('same dish NOT also flagged plate_menu_missing', !codes(dedupe).includes('plate_menu_missing'));
-check('sabzi flagged exactly once', codes(dedupe).filter((c) => c === 'menu_missing' || c === 'plate_menu_missing').length === 1);
+check('sabzi flagged exactly once', codes(dedupe).filter((c) => c === 'menu_missing').length === 1);
 
 // --- geo_missing: photos attached but none carry a GPS stamp ---
 const noGeo = evaluateSubmission(base(['rice'], mkFiles({ dishes_visible: ['rice'] })));

@@ -229,18 +229,22 @@ export function evaluateSubmission(submission, config = {}) {
     return mip;
   };
 
-  // menu_missing (red): a prescribed dish is CONFIRMED absent — the AI did not
-  // see it in the pot or the plate AND explicitly marked it absent. A dish the
-  // AI merely did not mention counts as "unclear" and is NEVER flagged (this is
-  // what stops false positives from imperfect dish recognition).
-  // menuMissingLabels also stops the plate check below double-flagging a dish.
-  const menuMissingLabels = new Set();
+  // menu_missing (red): a prescribed dish is CONFIRMED absent.
+  // A dish counts as PRESENT if it is visible in ANY of the four media — the
+  // cooking photo, the cooked-meal pot, the serving video, OR the final plate.
+  // (A roti that shows up in the second/third photo or the video is compliant
+  // even if the plate close-up doesn't show it.) It is flagged missing only when
+  // it is confirmed absent across ALL of them: never seen anywhere AND the AI
+  // explicitly marked it absent. A dish the AI merely did not mention counts as
+  // "unclear" and is NEVER flagged (this stops false positives from imperfect
+  // dish recognition).
   if (menu.length) {
-    const seenAll = gatherSeen(['cooked_meal', 'plate']);
-    const mipAll = gatherMip(['cooked_meal', 'plate']);
+    const stages = cfg.requiredItems; // ['cooking','cooked_meal','serving_video','plate']
+    const seenAll = gatherSeen(stages);
+    const mipAll = gatherMip(stages);
     const confirmedAbsent = (name) => {
       const nd = normDish(name);
-      if (dishSeenIn(seenAll, nd)) return false; // visibly present somewhere
+      if (dishSeenIn(seenAll, nd)) return false; // visibly present in some media
       return mipAll[nd] === false;               // AI explicitly said absent
     };
     const itemAbsent = (item) => {
@@ -248,35 +252,8 @@ export function evaluateSubmission(submission, config = {}) {
       return names.length > 0 && names.every(confirmedAbsent);
     };
     const missing = menu.filter(itemAbsent);
-    missing.forEach((it) => menuMissingLabels.add(itemLabel(it)));
     if (missing.length) {
-      flags.push(flag('menu_missing', 'red', `Prescribed dish confirmed missing (not in pot or plate): ${missing.map(itemLabel).join(', ')}`, 'ai'));
-    }
-  }
-
-  // plate_menu_missing (red): a prescribed dish is CLEARLY absent from the plate
-  // (served-plate photo present; only clear absences flag — "unclear" does not).
-  // A dish already reported by menu_missing (absent from the pot too) is skipped
-  // so the same dish is never flagged twice.
-  const plateAi = files.plate?.ai;
-  if (menu.length && plateAi && !files.plate?.missing) {
-    const seenPlate = gatherSeen(['plate']);
-    const mip = plateAi.menu_items_present || {};
-    const clearlyAbsent = (name) => {
-      const nd = normDish(name);
-      if (dishSeenIn(seenPlate, nd)) return false; // visibly present
-      return mip[nd] === false;                    // AI marked it absent (not unclear)
-    };
-    const itemAbsent = (item) => {
-      const names = typeof item === 'string' ? [item] : (item.anyOf || []);
-      return names.length > 0 && names.every(clearlyAbsent);
-    };
-    const missingOnPlate = menu
-      .filter((it) => !menuMissingLabels.has(itemLabel(it))) // not already flagged as missing everywhere
-      .filter(itemAbsent)
-      .map(itemLabel);
-    if (missingOnPlate.length) {
-      flags.push(flag('plate_menu_missing', 'red', `Prescribed dish not served on the plate: ${missingOnPlate.join(', ')}`, 'ai'));
+      flags.push(flag('menu_missing', 'red', `Prescribed dish confirmed missing (not in any photo or the video): ${missing.map(itemLabel).join(', ')}`, 'ai'));
     }
   }
 
