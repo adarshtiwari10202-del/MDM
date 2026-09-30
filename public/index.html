@@ -898,15 +898,15 @@ function schoolFlags(){
   });
   const flagged=new Map();
   const ensure=(u)=>{ if(!flagged.has(u)) flagged.set(u,{udise:u,name:nameFor(u),redStreak:null,missedRecent:false,missedDays:[]}); return flagged.get(u); };
-  // Rule A: red on N consecutive reporting days
-  for(const [u,set] of redBy){
-    let run=null;
-    for(let i=0;i+RED_STREAK_DAYS-1<days.length;i++){
-      let ok=true;
-      for(let k=0;k<RED_STREAK_DAYS;k++){ if(!set.has(days[i+k])){ ok=false; break; } }
-      if(ok) run=days.slice(i,i+RED_STREAK_DAYS);
+  // Rule A: red on the LAST RED_STREAK_DAYS consecutive reporting days.
+  // This is a rolling window — its end is the newest reporting day, so a
+  // school clears the flag once it posts a non-red day, and only schools red
+  // *right now* (for the streak length) are listed.
+  const redWindow = days.slice(-RED_STREAK_DAYS);
+  if(redWindow.length===RED_STREAK_DAYS){
+    for(const [u,set] of redBy){
+      if(redWindow.every(d=>set.has(d))) ensure(u).redStreak=redWindow.slice();
     }
-    if(run) ensure(u).redStreak=run;
   }
   // Rule B: missed reporting on ANY of the last RECENT_DAYS reporting days
   // (a single missed day is enough to flag the school). Whole roster.
