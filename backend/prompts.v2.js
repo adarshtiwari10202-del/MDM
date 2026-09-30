@@ -42,8 +42,9 @@ Today's prescribed menu is: ${menu}.
 Report: is food present? is it a top-down view? how many distinct dishes? list the dishes you see. For EACH prescribed menu item, mark present / absent / unclear based only on what is visible. Does it look freshly cooked? Rate cookware fill level using the rubric below.
 ${RUBRICS.cookware_fill_level}`,
 
-  serving: () => `These frames are sampled (~1 per second) from a short video of food being served from the cookware onto a plate. Treat them together as one clip.
-Report: is a serving action visible? is food moved from cookware onto a plate? which dishes are served? is a plate/thali visible? does it look like one continuous clip (not stitched/edited)?`,
+  serving: (menu) => `These frames are sampled (~1 per second) from a short video of food being served from the cookware onto a plate. Treat them together as one clip and consider ALL frames.
+Today's prescribed menu is: ${menu}.
+Report: is a serving action visible? is food moved from cookware onto a plate? List every dish you can see anywhere across the frames (in the cookware, being ladled, or on the plate). For EACH prescribed menu item, mark present / absent / unclear based on whether it is visible in ANY frame of the clip — a dish counts as present if it appears in even one frame. is a plate/thali visible? does it look like one continuous clip (not stitched/edited)?`,
 
   plate: (menu) => `This item should show a single plate with all of today's food on it.
 Today's prescribed menu is: ${menu}.

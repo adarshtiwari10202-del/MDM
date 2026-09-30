@@ -69,6 +69,7 @@ const STAGE_FIELDS = {
     serving_action_visible: YN(),
     food_moved_from_cookware_to_plate: YN(),
     dishes_served: STR_ARRAY(),
+    menu_items: MENU_ITEMS(),
     plate_or_thali_visible: YN(),
     appears_single_continuous_clip: YN(),
   },
