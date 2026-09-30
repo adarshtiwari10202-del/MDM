@@ -10,7 +10,7 @@
 import { readResults, clearResults, appendResults } from '../backend/store.js';
 import { evaluateSubmission } from '../backend/flagRules.js';
 import { sourceLabel } from '../backend/pipeline.js';
-import { getMenu } from '../backend/menu.js';
+import { getMenu, menuDishList } from '../backend/menu.js';
 
 const ITEMS = ['cooking', 'cooked_meal', 'serving_video', 'plate'];
 const rn = (id) => { const m = String(id).match(/_r(\d+)$/); return m ? Number(m[1]) : 0; };
@@ -43,15 +43,18 @@ async function main() {
         seen.set(f.hash, { id: r.id, udise, date, label: sourceLabel(r, k) });
       }
     }
+    const menu = getMenu(r.date, r.school?.udise);
     const submission = {
       school: r.school,
       date: r.date,
       submittedAt: r.submittedAt,
-      menu: getMenu(r.date, r.school?.udise),
+      menu,
       files: r.files,
     };
     const res = evaluateSubmission(submission);
     r.flags = res.flags; r.severity = res.severity; r.score = res.score; r.summary = res.summary;
+    // keep the displayed menu in sync with the current rule (e.g. "rice, dal/sabzi")
+    r.menu = menu; r.menuLabel = menuDishList(menu).join(', ');
   }
 
   await clearResults();
