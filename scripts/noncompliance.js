@@ -22,6 +22,12 @@ async function main() {
     date: ["today's date", 'today date', 'date'],
   });
 
+  // ---- SOURCE DIAGNOSTICS (prove this is the daily reporting Google Form) ----
+  console.log(`[src] DAILY_SHEET_ID(last6)=…${String(process.env.DAILY_SHEET_ID || '').slice(-6)}  tab="${process.env.DAILY_SHEET_TAB || 'Form Responses 1'}"  total response rows=${rows.length}`);
+  console.log('[src] daily-form columns detected:');
+  headers.forEach((h, i) => console.log(`      [${i}] ${h}`));
+  console.log(`[src] resolved → udise:${JSON.stringify(cols.udise)}  school:${JSON.stringify(cols.school)}  date:${JSON.stringify(cols.date)}  timestamp:${JSON.stringify(cols.timestamp)}`);
+
   // Optional window so an in-progress day (or rollout days) can be excluded.
   const DMIN = process.env.DATE_MIN || null; // inclusive lower bound
   const DMAX = process.env.DATE_MAX || null; // inclusive upper bound
@@ -92,6 +98,30 @@ async function main() {
   console.log(`\n===== LIST 3 — RECENTLY GONE SILENT: reported earlier but NOT in last ${RECENT} days (${droppedOff.length}) =====`);
   droppedOff.forEach((r, i) => console.log(`${String(i + 1).padStart(3)}. ${r.udise}  ${r.name}  (last active before ${recentDays[0]}, ${r.sub} days total)`));
   console.log(`\n[noncompliance] (schools with no report in last ${RECENT} days, INCLUDING never-submitted: ${silentAll.length})`);
+
+  // ---- HIGH-STAKES VERIFICATION: raw-scan the daily form for every "never" school ----
+  // If a school appears anywhere in the raw rows (by UDISE digits or name), it may
+  // have submitted under a variant and should NOT be on the never list.
+  const digits = (s) => String(s || '').replace(/\D/g, '');
+  const rowsText = rows.map((r) => Object.entries(r).filter(([k]) => k !== '__rowIndex').map(([, v]) => String(v ?? '')).join(' | '));
+  console.log('\n===== VERIFY — raw scan of daily form for each NEVER-reported school =====');
+  let flagged = 0;
+  for (const r of never) {
+    const nameTok = String(r.name).split('(')[0].trim().toUpperCase();
+    const udiseHits = [], nameHits = [];
+    rowsText.forEach((t, i) => {
+      if (t.includes(r.udise) || digits(t).includes(r.udise)) udiseHits.push(i);
+      if (nameTok && t.toUpperCase().includes(nameTok)) nameHits.push(i);
+    });
+    if (udiseHits.length || nameHits.length) {
+      flagged++;
+      console.log(`  ⚠ ${r.udise} ${r.name} → UDISE hits:${udiseHits.length} NAME("${nameTok}") hits:${nameHits.length}`);
+      [...new Set([...udiseHits, ...nameHits])].slice(0, 3).forEach((i) => console.log(`       row: ${rowsText[i].slice(0, 160)}`));
+    }
+  }
+  console.log(flagged
+    ? `  ⚠ ${flagged} never-reported school(s) DID appear in raw rows — review before sending.`
+    : '  ✓ none of the never-reported schools appear anywhere in the daily form (by UDISE or name). List is clean.');
 }
 
 main().catch((e) => { console.error('[noncompliance] FAILED:', e); process.exit(1); });
