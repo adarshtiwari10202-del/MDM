@@ -87,6 +87,21 @@ async function main() {
   console.log(`\n[non-roster] UDISEs that submitted on a target day but are NOT in roster: ${nonRoster.size}`);
   [...nonRoster.entries()].forEach(([u, s]) => console.log(`   ${u}  days=${[...s].join(',')}`));
 
+  // Detail dump for the risk set (missed-by-timestamp but complete-by-manual):
+  // show every row for those UDISEs so a human can judge midnight/late cases.
+  const riskSet = new Set(riskTsOnly);
+  if (riskSet.size) {
+    console.log('\n[detail] every submission for the ⚠ timestamp-vs-manual risk schools:');
+    for (const r of rows) {
+      let u = norm(cols.udise ? r[cols.udise] : '');
+      if (!/^\d{6,}$/.test(u)) u = udiseFrom(cols.school ? r[cols.school] : '');
+      if (!riskSet.has(u)) continue;
+      const tsFull = cols.timestamp ? toISODateTime(r[cols.timestamp]) : '';
+      const man = cols.date ? toISODate(r[cols.date]) : '';
+      console.log(`   ${u}  ts=${tsFull || '(none)'}  typedDate=${man || '(none)'}  school="${String(cols.school ? r[cols.school] : '').trim()}"`);
+    }
+  }
+
   // Recompute authoritative md5 (timestamp method, missedDays per school) and compare to committed JSON
   const missedList = roster
     .map((s) => { const set = byTs.get(norm(s.udise)) || new Set(); return { udise: norm(s.udise), missedDays: DAYS.filter((d) => !set.has(d)) }; })
