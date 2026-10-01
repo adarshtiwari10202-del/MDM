@@ -5,7 +5,13 @@ on:
     inputs:
       days:
         description: Comma-separated reporting dates to check (YYYY-MM-DD)
-        default: '2026-09-28,2026-09-29,2026-09-30'
+        default: '2026-09-29,2026-09-30,2026-10-01'
+      cutoff_day:
+        description: 'Optional in-progress day to gate by time (YYYY-MM-DD); blank = count all submissions'
+        default: ''
+      cutoff_time:
+        description: 'Cutoff time IST (HH:MM:SS), inclusive — only used if cutoff_day set'
+        default: '19:00:00'
 
 permissions:
   contents: write
@@ -27,6 +33,8 @@ jobs:
           DAILY_SHEET_TAB: Form Responses 1
           ROSTER_SHEET_TAB: Sheet1
           DAYS: ${{ github.event.inputs.days }}
+          CUTOFF_DAY: ${{ github.event.inputs.cutoff_day }}
+          CUTOFF_TIME: ${{ github.event.inputs.cutoff_time }}
         run: node scripts/missed3days.js
       - name: Commit authoritative JSON
         run: |

@@ -1,9 +1,10 @@
 // ============================================================
-// Single list: roster schools that MISSED daily reporting on ANY of the last
-// three days — 28, 29, 30 Sep 2026 — where 30 Sep counts only submissions up to
-// 19:00 IST. A school is listed unless it reported on ALL THREE days.
-// Grouping is by the Google submission TIMESTAMP (IST). Read-only.
-// Needs: GOOGLE_SERVICE_ACCOUNT_JSON, DAILY_SHEET_ID (+ Sheet1 roster).
+// Single list: roster schools that MISSED daily reporting on ANY of the target
+// reporting days (DAYS env, default the last three). A school is listed unless
+// it reported on EVERY one of those days. Grouping is by the Google submission
+// TIMESTAMP (IST). An optional same-day cutoff (CUTOFF_DAY + CUTOFF_TIME env)
+// gates an in-progress day; when unset, ALL submissions on every day count.
+// Read-only. Needs: GOOGLE_SERVICE_ACCOUNT_JSON, DAILY_SHEET_ID (+ Sheet1 roster).
 // ============================================================
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -14,8 +15,8 @@ import { resolveColumns, toISODate, toISODateTime, effectiveDate } from '../back
 const norm = (u) => String(u || '').trim();
 const udiseFrom = (s) => { const m = String(s || '').match(/\b(\d{8,15})\b/); return m ? m[1] : ''; };
 const DAYS = (process.env.DAYS ? process.env.DAYS.split(',').map((s) => s.trim()) : ['2026-09-28', '2026-09-29', '2026-09-30']);
-const CUTOFF_DAY = '2026-09-30';
-const CUTOFF_TIME = '19:00:00'; // 7 PM IST inclusive
+const CUTOFF_DAY = process.env.CUTOFF_DAY || '';          // '' = no cutoff; count all submissions on every day
+const CUTOFF_TIME = process.env.CUTOFF_TIME || '19:00:00'; // HH:MM:SS IST inclusive (only used if CUTOFF_DAY set)
 
 async function main() {
   const roster = await readRoster();
@@ -37,8 +38,8 @@ async function main() {
     if (!DAYS.includes(eff.date)) continue;
     let u = norm(cols.udise ? r[cols.udise] : '');
     if (!/^\d{6,}$/.test(u)) u = udiseFrom(cols.school ? r[cols.school] : '');
-    // 7 PM IST cutoff on 30 Sep
-    if (eff.date === CUTOFF_DAY) {
+    // Optional same-day cutoff (only when CUTOFF_DAY is set)
+    if (CUTOFF_DAY && eff.date === CUTOFF_DAY) {
       const timePart = tsISO ? tsISO.slice(11, 19) : '';      // HH:MM:SS (IST wall clock)
       if (timePart && timePart > CUTOFF_TIME) { excluded30.push({ u, school: cols.school ? r[cols.school] : '', t: timePart }); continue; }
     }
@@ -59,7 +60,7 @@ async function main() {
   }
   missed.sort((a, b) => a.name.localeCompare(b.name));
 
-  console.log(`\n===== MISSED ANY OF 28/29/30 SEP (${missed.length} of ${roster.length}) =====`);
+  console.log(`\n===== MISSED ANY OF ${DAYS.join(', ')} (${missed.length} of ${roster.length}) =====`);
   missed.forEach((m, i) => console.log(`${String(i + 1).padStart(3)}. ${m.udise}  ${m.name}  | reported ${m.got}/3 | missed: ${m.missedDays.map((d) => d.slice(8)).join(',')}`));
 
   const allThree = roster.length - missed.length;
