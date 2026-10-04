@@ -13,7 +13,10 @@ const j = JSON.parse(fs.readFileSync('reports/missed3days.json', 'utf8'));
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const fmt = (iso) => { const [y, m, d] = iso.split('-').map(Number); return `${d} ${MONTHS[m - 1]}`; };
+const fmtYear = (iso) => `${fmt(iso)} ${iso.slice(0, 4)}`;
 const daysLabel = j.days.map(fmt).join(', ');
+const SINGLE = j.days.length === 1;          // one-day list → drop the per-day column
+const singleDate = SINGLE ? fmtYear(j.days[0]) : '';
 
 const rows = j.missed
   .filter((m) => !EXCLUDE.has(m.udise))
@@ -31,7 +34,11 @@ const cell = (text, { bold = false, color, align = AlignmentType.LEFT, bg, width
 
 const headerRow = new TableRow({
   tableHeader: true,
-  children: [
+  children: SINGLE ? [
+    cell('S.No', { bold: true, color: 'FFFFFF', align: AlignmentType.CENTER, bg: HEADBG, width: 10 }),
+    cell('UDISE Code', { bold: true, color: 'FFFFFF', bg: HEADBG, width: 26 }),
+    cell('School Name', { bold: true, color: 'FFFFFF', bg: HEADBG, width: 64 }),
+  ] : [
     cell('S.No', { bold: true, color: 'FFFFFF', align: AlignmentType.CENTER, bg: HEADBG, width: 8 }),
     cell('UDISE Code', { bold: true, color: 'FFFFFF', bg: HEADBG, width: 20 }),
     cell('School Name', { bold: true, color: 'FFFFFF', bg: HEADBG, width: 44 }),
@@ -40,7 +47,11 @@ const headerRow = new TableRow({
 });
 
 const bodyRows = rows.map((m, i) => new TableRow({
-  children: [
+  children: SINGLE ? [
+    cell(String(i + 1), { align: AlignmentType.CENTER, bg: i % 2 ? 'F2F5FA' : undefined }),
+    cell(m.udise, { bg: i % 2 ? 'F2F5FA' : undefined }),
+    cell(m.name, { bg: i % 2 ? 'F2F5FA' : undefined }),
+  ] : [
     cell(String(i + 1), { align: AlignmentType.CENTER, bg: i % 2 ? 'F2F5FA' : undefined }),
     cell(m.udise, { bg: i % 2 ? 'F2F5FA' : undefined }),
     cell(m.name, { bg: i % 2 ? 'F2F5FA' : undefined }),
@@ -67,20 +78,26 @@ const doc = new Document({
       new Paragraph({ spacing: { after: 160 },
         children: [new TextRun({ text: 'Hargaon Block, Sitapur District, Uttar Pradesh', color: GREY, size: 20 })] }),
 
-      P('Subject: Schools that did not submit the daily MDM reporting (Google Form) on one or more of the last three reporting days.', { bold: true }),
-      P(`Reporting days checked: ${daysLabel} 2026. A school is listed if it did not submit on any one (or more) of these three days. Schools that reported on all three days are not listed.`),
+      P(SINGLE
+        ? `Subject: Schools that did not submit the daily MDM reporting (Google Form) on ${singleDate}.`
+        : 'Subject: Schools that did not submit the daily MDM reporting (Google Form) on one or more of the last three reporting days.', { bold: true }),
+      P(SINGLE
+        ? `Reporting day checked: ${singleDate}. A school is listed if no daily reporting submission was received from it on this day. Schools that submitted are not listed.`
+        : `Reporting days checked: ${daysLabel} 2026. A school is listed if it did not submit on any one (or more) of these three days. Schools that reported on all three days are not listed.`),
       P(`Source of truth: the daily reporting Google Form responses, grouped by the form's automatic submission timestamp (IST). Roster: ${j.rosterSize} schools.`),
 
       new Paragraph({ spacing: { before: 80, after: 60 }, children: [new TextRun({ text: 'Summary', bold: true, color: NAVY, size: 22 })] }),
-      P(`Schools submitting each day — ${j.perDay.map((d) => `${fmt(d.date)}: ${d.schools}`).join('   ·   ')}.`),
-      P(`Schools that missed at least one of the three days: ${rows.length} of ${j.rosterSize}. Reported on all three days: ${j.rosterSize - rows.length}.`, { bold: true }),
+      P(SINGLE
+        ? `On ${singleDate}, ${j.rosterSize - rows.length} of ${j.rosterSize} schools submitted their daily report and ${rows.length} did not.`
+        : `Schools submitting each day — ${j.perDay.map((d) => `${fmt(d.date)}: ${d.schools}`).join('   ·   ')}.`, { bold: SINGLE }),
+      SINGLE ? null : P(`Schools that missed at least one of the three days: ${rows.length} of ${j.rosterSize}. Reported on all three days: ${j.rosterSize - rows.length}.`, { bold: true }),
 
-      new Paragraph({ spacing: { before: 120, after: 80 }, children: [new TextRun({ text: `Schools to follow up (${rows.length})`, bold: true, color: NAVY, size: 22 })] }),
+      new Paragraph({ spacing: { before: 120, after: 80 }, children: [new TextRun({ text: SINGLE ? `Schools that did not report on ${singleDate} (${rows.length})` : `Schools to follow up (${rows.length})`, bold: true, color: NAVY, size: 22 })] }),
       table,
 
       new Paragraph({ spacing: { before: 200 },
         children: [new TextRun({ text: `Generated ${new Date(j.generatedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} IST. Figures verified against the Google Form by two independent methods (submission timestamp and the manually-entered date); counts reconcile to the full ${j.rosterSize}-school roster.`, italics: true, color: GREY, size: 17 })] }),
-    ],
+    ].filter(Boolean),
   }],
 });
 
