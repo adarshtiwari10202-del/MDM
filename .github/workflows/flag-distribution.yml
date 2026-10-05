@@ -21,3 +21,9 @@ jobs:
           DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
           DAILY_SHEET_TAB: Form Responses 1
         run: node scripts/flag-distribution.js
+      - name: Dedup audit
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          RESULTS_SHEET_TAB: Results
+        run: node scripts/dedup-audit.js
