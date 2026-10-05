@@ -889,12 +889,32 @@ function renderRosterModal(){
 //   • RED STREAK  — a red flag on RED_STREAK_DAYS consecutive reporting days
 //   • MISSED DAY  — missed reporting on ANY of the last RECENT_DAYS reporting
 //                   days (flagged even if only a single day was missed)
-// "Reporting days" = the distinct dates the block actually reported on, so
-// Sundays / holidays (when nobody submits) don't count as gaps.
+// "Reporting days" = the distinct dates the block actually reported on, minus
+// declared holidays (HOLIDAYS) and today until 7 PM IST, so Sundays/holidays and
+// an in-progress day don't count as gaps.
 // ============================================================
 const RED_STREAK_DAYS=3, RECENT_DAYS=3;
 
-function reportingDays(){ return [...new Set(ROWS.map(r=>r.date).filter(Boolean))].sort(); }
+// Days the block was NOT expected to report (holidays). These never count as a
+// reporting day, so no school is flagged for "missing" them. Add dates here.
+const HOLIDAYS=new Set(['2026-10-02']);
+// Today only becomes a counted reporting day after this IST hour (7 PM), so an
+// in-progress day isn't used in the streak / missed-day windows before schools
+// have had the full day to submit.
+const REPORT_CUTOFF_HOUR=19;
+function istNow(){ return new Date(Date.now()+(5*60+30)*60000); }   // IST wall clock as a UTC-reading Date
+function istTodayISO(){ return istNow().toISOString().slice(0,10); }
+
+// "Reporting days" = distinct dates the block actually reported on, MINUS
+// holidays, and excluding today until 7 PM IST (an incomplete day).
+function reportingDays(){
+  const today=istTodayISO();
+  const todayCounts = istNow().getUTCHours()>=REPORT_CUTOFF_HOUR;   // today counts only after 7 PM IST
+  return [...new Set(ROWS.map(r=>r.date).filter(Boolean))]
+    .filter(d=>!HOLIDAYS.has(d))
+    .filter(d=>!(d===today && !todayCounts))
+    .sort();
+}
 function fmtShort(d){ try{return new Date(d+'T12:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch(e){return d;} }
 function nameFor(udise){
   const r=ROSTER.find(s=>String(s.udise).trim()===udise);
