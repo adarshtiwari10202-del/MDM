@@ -304,7 +304,10 @@
         <button data-t="done">Submitted</button>
         <button data-t="all">All</button>
       </div>
-      <input class="modal-search" id="rmSearch" placeholder="Search school name or UDISE…">
+      <div class="modal-dlrow">
+        <input class="modal-search" id="rmSearch" placeholder="Search school name or UDISE…">
+        <button class="dlbtn" id="rmExport" type="button" title="Download the current list as an Excel file">⬇ Excel</button>
+      </div>
       <div class="modal-list" id="rmList"></div>
     </div>
   </div>
@@ -893,6 +896,41 @@ function renderRosterModal(){
   }).join('');
 }
 
+// ---- Excel export of the submissions modal (e.g. schools yet to report today) ----
+function currentRosterList(){
+  const a=attendance();
+  const q=(document.getElementById('rmSearch').value||'').trim().toLowerCase();
+  let list = RM_TAB==='pending' ? a.pending : RM_TAB==='done' ? a.done : ROSTER;
+  list=[...list].sort((x,y)=>x.name.localeCompare(y.name));
+  if(q) list=list.filter(s=>s.name.toLowerCase().includes(q)||String(s.udise).includes(q));
+  return { list, submitted:a.submitted };
+}
+function rosterExportName(ext){
+  const tag = RM_TAB==='pending' ? 'NotSubmitted' : RM_TAB==='done' ? 'Submitted' : 'AllSchools';
+  const d = SELECTED_DATE==='all' ? 'any-date' : SELECTED_DATE;
+  return `MDM_${tag}_Hargaon_${d}.${ext}`;
+}
+async function exportRosterExcel(){
+  const btn=document.getElementById('rmExport'); const old=btn.textContent;
+  const { list, submitted }=currentRosterList();
+  if(!list.length){ alert('No schools in the current list to export.'); return; }
+  const header=['S.No','UDISE Code','School Name','Status'];
+  const rows=list.map((s,i)=>[i+1, String(s.udise), s.name, submitted.has(String(s.udise).trim())?'Submitted':'Not submitted']);
+  btn.disabled=true; btn.textContent='…';
+  try{
+    const XLSX=await ensureXLSX();
+    const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
+    ws['!cols']=[{wch:6},{wch:16},{wch:42},{wch:16}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, RM_TAB==='pending'?'Not submitted':RM_TAB==='done'?'Submitted':'All');
+    XLSX.writeFile(wb, rosterExportName('xlsx'));
+  }catch(e){
+    const esc=(v)=>{ const s=String(v==null?'':v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
+    const csv=[header,...rows].map(r=>r.map(esc).join(',')).join('\r\n');
+    triggerDownload(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'}), rosterExportName('csv'));
+  }finally{ btn.disabled=false; btn.textContent=old; }
+}
+
 // ============================================================
 // School-level, multi-day flags (computed over ALL data, not one date)
 //   • RED STREAK  — a red flag on RED_STREAK_DAYS consecutive reporting days
@@ -1387,6 +1425,7 @@ document.getElementById('rmTabs').addEventListener('click',(e)=>{
   b.classList.add('active'); RM_TAB=b.dataset.t; renderRosterModal();
 });
 document.getElementById('rmSearch').addEventListener('input',renderRosterModal);
+document.getElementById('rmExport').addEventListener('click',exportRosterExcel);
 
 // flagged-schools tiles → open the modal on the matching tab
 const fqEl=document.getElementById('flagQuality');
