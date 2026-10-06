@@ -203,37 +203,9 @@
   .pf-nosub{display:flex;align-items:center;gap:10px;padding:11px 13px;background:#faf6f6;
     border:1px solid var(--hair);border-left:4px solid var(--amber);border-radius:8px}
   .pf-nosub .pf-date{font-family:"Archivo";font-weight:700;font-size:13.5px}
-  /* --- login gate (basic access guardrail) --- */
-  #loginGate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
-    background:var(--navy);padding:20px}
-  .login-card{width:100%;max-width:340px;background:#fff;border-radius:14px;padding:26px 24px;
-    box-shadow:0 18px 50px rgba(0,0,0,.35)}
-  .login-card h2{margin:0 0 2px;font-size:19px;font-weight:800;color:var(--navy)}
-  .login-card .sub{color:var(--grey);font-size:12.5px;margin-bottom:18px}
-  .login-card label{display:block;font-size:12px;font-weight:700;color:var(--ink);margin:12px 0 5px}
-  .login-card input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--hair);
-    border-radius:8px;font:inherit;font-size:14px}
-  .login-card button{width:100%;margin-top:18px;padding:11px;border:0;border-radius:8px;cursor:pointer;
-    background:var(--navy);color:#fff;font:inherit;font-size:14px;font-weight:700}
-  .login-card button:hover{filter:brightness(1.12)}
-  .login-err{min-height:16px;margin-top:10px;color:var(--red);font-size:12.5px;font-weight:600}
-  .logout{cursor:pointer;color:#B9CBE4;font-size:12px;margin-top:6px;text-decoration:underline}
-  .logout:hover{color:#fff}
 </style>
 </head>
 <body>
-  <div id="loginGate">
-    <form class="login-card" id="loginForm" autocomplete="off">
-      <h2>MDM Monitoring</h2>
-      <div class="sub">Hargaon Block · Sitapur — sign in to continue</div>
-      <label for="lgUser">Username</label>
-      <input id="lgUser" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
-      <label for="lgPass">Password</label>
-      <input id="lgPass" type="password" autocomplete="current-password">
-      <button type="submit">Sign in</button>
-      <div class="login-err" id="lgErr"></div>
-    </form>
-  </div>
   <div class="topbar">
     <div class="row">
       <div>
@@ -248,7 +220,6 @@
           <datalist id="schoolList"></datalist>
           <button id="schoolJumpGo" type="button">Go</button>
         </div>
-        <div class="logout" id="logoutBtn" role="button" tabindex="0">Log out</div>
       </div>
     </div>
     <div class="gradbar"></div>
@@ -1566,9 +1537,7 @@ function updateDateline(){
   el.textContent = SELECTED_DATE==='all' ? 'All dates' : fmtDate(SELECTED_DATE);
 }
 
-let __STARTED=false;
-async function startDashboard(){
-  if(__STARTED) return; __STARTED=true;
+(async function init(){
   [ROWS, ROSTER] = await Promise.all([loadData(), loadRoster(), loadSubmissions()]);
   buildSchoolList();
   populateDates();
@@ -1583,41 +1552,7 @@ async function startDashboard(){
       if(document.getElementById('rosterModal').classList.contains('show')) renderRosterModal();
     }catch(e){ /* transient fetch failure — try again next tick */ }
   }, 300000); // every 5 minutes
-}
-
-// ============================================================
-// Basic access guardrail (client-side — a gate, not real security).
-// Username is checked in the clear; the password is compared by SHA-256 hash
-// so it isn't sitting as plaintext in the page source. The dashboard (and its
-// data fetches) only start after a successful sign-in.
-// ============================================================
-const AUTH_USER='mdm_hargaon1';
-const AUTH_HASH='e17716900dc8bf8e43471c2d105fd9e09ce6742e98fd3c23bc7522e6bd89b7b4'; // sha256('mdm_pilot')
-const AUTH_KEY='mdm_auth_v1';
-async function sha256Hex(str){
-  const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-function showDashboard(){ const g=document.getElementById('loginGate'); if(g) g.style.display='none'; startDashboard(); }
-function isAuthed(){ try{ return localStorage.getItem(AUTH_KEY)==='ok'; }catch(e){ return false; } }
-function logout(){ try{ localStorage.removeItem(AUTH_KEY); }catch(e){} location.reload(); }
-
-document.getElementById('loginForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const u=document.getElementById('lgUser').value.trim();
-  const p=document.getElementById('lgPass').value;
-  const err=document.getElementById('lgErr');
-  let ok=false;
-  try{ ok = (u===AUTH_USER) && (await sha256Hex(p))===AUTH_HASH; }catch(e2){ ok=false; }
-  if(ok){ try{ localStorage.setItem(AUTH_KEY,'ok'); }catch(e2){} err.textContent=''; showDashboard(); }
-  else { err.textContent='Incorrect username or password.'; document.getElementById('lgPass').value=''; document.getElementById('lgPass').focus(); }
-});
-document.getElementById('logoutBtn').addEventListener('click', logout);
-document.getElementById('logoutBtn').addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); logout(); }});
-
-// Already signed in on this device → skip the gate; else focus the username.
-if(isAuthed()){ showDashboard(); }
-else { const uf=document.getElementById('lgUser'); if(uf) uf.focus(); }
+})();
 </script>
 </body>
 </html>
