@@ -25,6 +25,9 @@
   .topbar h1{font-size:20px;font-weight:800;margin:0;letter-spacing:.2px}
   .topbar .sub{color:#B9CBE4;font-size:13px;margin-top:2px}
   .topbar .meta{color:#cfe0f5;font-size:13px;text-align:right}
+  .livestamp{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;color:#9fd9c4;font-size:11.5px;margin-top:3px}
+  .livestamp .livedot{width:7px;height:7px;border-radius:50%;background:#22c38f;box-shadow:0 0 0 0 rgba(34,195,143,.6);animation:livepulse 2s infinite}
+  @keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(34,195,143,.55)}70%{box-shadow:0 0 0 6px rgba(34,195,143,0)}100%{box-shadow:0 0 0 0 rgba(34,195,143,0)}}
   .schooljump{margin-top:8px;display:flex;justify-content:flex-end;gap:6px;align-items:center}
   .schooljump input{width:230px;max-width:52vw;padding:7px 10px;border-radius:8px;border:1px solid #33507a;
     background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit}
@@ -214,6 +217,7 @@
       </div>
       <div class="meta">
         <div id="dateline">—</div>
+        <div id="liveStamp" class="livestamp"></div>
         <div class="schooljump">
           <input id="schoolJump" list="schoolList" placeholder="Go to school — UDISE or name…"
                  autocomplete="off" aria-label="Go to a school's history">
@@ -1521,20 +1525,49 @@ document.addEventListener('keydown',(e)=>{
   }
 });
 
-function populateDates(){
-  // Union of AI-processed dates (ROWS) and live-submission dates (SUB_DATES) so
-  // today appears — and becomes the default — even before the evening AI run.
-  const dates=[...new Set([...ROWS.map(r=>r.date), ...SUB_DATES].filter(Boolean))].sort().reverse();
-  SELECTED_DATE = dates[0] || 'all';
+// Union of AI-processed dates (ROWS) and live-submission dates (SUB_DATES), newest first.
+function allDates(){ return [...new Set([...ROWS.map(r=>r.date), ...SUB_DATES].filter(Boolean))].sort().reverse(); }
+function latestDate(){ return allDates()[0] || 'all'; }
+let AUTO_FOLLOW=true;  // true while the viewer is tracking the newest date (so it auto-advances at day rollover)
+function rebuildDateOptions(){
+  const dates=allDates();
   const sel=document.getElementById('dateSel');
   sel.innerHTML = dates.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('')
     + `<option value="all">All dates</option>`;
   sel.value=SELECTED_DATE;
-  sel.addEventListener('change',()=>{ SELECTED_DATE=sel.value; updateDateline(); render(); });
+}
+function populateDates(){
+  // today appears — and becomes the default — even before the evening AI run.
+  SELECTED_DATE = latestDate();
+  AUTO_FOLLOW = true;
+  rebuildDateOptions();
+  const sel=document.getElementById('dateSel');
+  sel.addEventListener('change',()=>{
+    SELECTED_DATE=sel.value;
+    AUTO_FOLLOW = (sel.value===latestDate());   // following "today" only if the newest date is picked
+    updateDateline(); render();
+  });
 }
 function updateDateline(){
   const el=document.getElementById('dateline');
   el.textContent = SELECTED_DATE==='all' ? 'All dates' : fmtDate(SELECTED_DATE);
+}
+function updateLiveStamp(){
+  const el=document.getElementById('liveStamp'); if(!el) return;
+  const t=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit'});
+  el.innerHTML=`<span class="livedot"></span>Live · updated ${t} IST`;
+}
+
+// Pull the live submission feed and refresh the submission surfaces. If the
+// viewer is tracking the newest date and a new day has started, follow to it.
+async function refreshLive(){
+  await loadSubmissions();
+  const prev=SELECTED_DATE;
+  if(AUTO_FOLLOW && SELECTED_DATE!=='all' && SELECTED_DATE!==latestDate()) SELECTED_DATE=latestDate();
+  rebuildDateOptions();
+  if(SELECTED_DATE!==prev){ updateDateline(); render(); }   // day rolled over → full redraw
+  else { renderKpis(); renderAttendance(); if(document.getElementById('rosterModal').classList.contains('show')) renderRosterModal(); }
+  updateLiveStamp();
 }
 
 (async function init(){
@@ -1543,15 +1576,12 @@ function updateDateline(){
   populateDates();
   updateDateline();
   render();
+  updateLiveStamp();
   // Keep the live submission count and the "yet to report" list fresh through
-  // the day without a manual reload. (AI flags refresh on the evening run.)
-  setInterval(async()=>{
-    try{
-      await loadSubmissions();
-      renderKpis(); renderAttendance();
-      if(document.getElementById('rosterModal').classList.contains('show')) renderRosterModal();
-    }catch(e){ /* transient fetch failure — try again next tick */ }
-  }, 300000); // every 5 minutes
+  // the day on their own — no manual action. (AI quality flags refresh on the
+  // evening run.) Also re-checks when the tab regains focus.
+  setInterval(()=>{ refreshLive().catch(()=>{}); }, 120000); // every 2 minutes
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshLive().catch(()=>{}); });
 })();
 </script>
 </body>
