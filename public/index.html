@@ -828,6 +828,10 @@ async function loadRoster(){
 }
 
 let ROWS=[], ROSTER=[], FILTER='all', SELECTED_DATE='all';
+// Live daily-form submission feed (independent of the evening AI run):
+// date -> array of UDISE codes that submitted that day. Powers the live
+// submission count and the "yet to report today" list during school hours.
+let SUBS_BY_DATE={}, SUB_DATES=[];
 
 function fmtTime(iso){ if(!iso) return '—';
   return new Date(iso).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
@@ -842,11 +846,35 @@ function uniqueSubmissions(rows){
   return s.size;
 }
 
-// Set of UDISE codes that submitted on the selected date.
+// Set of UDISE codes that submitted on the selected date. Prefers the LIVE
+// daily-form feed (updates through the day); falls back to the AI results store
+// if the feed is unavailable.
 function submittedUdiseSet(){
   const s=new Set();
+  if(SUB_DATES.length){
+    const ds = SELECTED_DATE==='all' ? SUB_DATES : [SELECTED_DATE];
+    ds.forEach(d=>(SUBS_BY_DATE[d]||[]).forEach(u=>s.add(String(u).trim())));
+    return s;
+  }
   dateRows().forEach(r=>{ const u=(r.school&&r.school.udise||'').trim(); if(u) s.add(u); });
   return s;
+}
+// Distinct schools that submitted on the selected date per the LIVE feed
+// (null when the feed is unavailable).
+function liveSubmittedCount(){
+  if(!SUB_DATES.length) return null;
+  if(SELECTED_DATE==='all'){ const s=new Set(); SUB_DATES.forEach(d=>(SUBS_BY_DATE[d]||[]).forEach(u=>s.add(u))); return s.size; }
+  return (SUBS_BY_DATE[SELECTED_DATE]||[]).length;
+}
+// Does the selected date have live submissions but no AI results yet?
+function aiPendingForDate(){
+  return liveSubmittedCount()>0 && dateRows().length===0;
+}
+async function loadSubmissions(){
+  try{
+    const r=await fetch('/api/submissions');
+    if(r.ok){ const j=await r.json(); if(j && j.submittedByDate){ SUBS_BY_DATE=j.submittedByDate; SUB_DATES=(j.dates||[]).slice().sort(); } }
+  }catch(e){ /* no live feed → attendance falls back to the AI results store */ }
 }
 
 // Attendance = roster schools that have (not) submitted for the selected date.
@@ -1135,20 +1163,27 @@ const ITEM_KEYS=['cooking','cooked_meal','serving_video','plate'];
 function renderKpis(){
   const rows=dateRows();
   const total=rows.length;
-  const unique=uniqueSubmissions(rows);
+  const uniqueAI=uniqueSubmissions(rows);
+  const live=liveSubmittedCount();                      // live form count (null if no feed)
+  const unique = live!=null ? live : uniqueAI;          // submissions = live when available
+  const aiPending = aiPendingForDate();                 // submitted today, AI not run yet
   const red=rows.filter(r=>r.severity==='red').length;
   const compliance=total?Math.round((rows.filter(r=>r.severity==='ok').length/total)*100):0;
   const cards=[
-    {n:unique,l:'Unique submissions',cls:'yel'},
-    {n:red,l:'Red submissions (this date)',cls:'red'},
-    {n:compliance+'%',l:'Clean (no flags)',cls:'teal'},
+    {n:unique,l:'Submissions'+(aiPending?' (live)':''),cls:'yel'},
+    {n:aiPending?'—':red,l:'Red submissions (this date)',cls:'red'},
+    {n:aiPending?'Pending':compliance+'%',l:'Clean (no flags)',cls:'teal'},
   ];
   document.getElementById('kpis').innerHTML=cards.map(c=>
     `<div class="kpi"><div class="n ${c.cls}">${c.n}</div><div class="l">${c.l}</div></div>`).join('');
-  // date summary line: uploads vs unique (surfaces repeat submissions)
-  const dupNote = total>unique ? ` · ${total-unique} repeat upload${total-unique>1?'s':''}` : '';
   const sumEl=document.getElementById('dateSummary');
-  if(sumEl) sumEl.textContent = `${unique} unique of ${total} upload${total===1?'':'s'}${dupNote}`;
+  if(!sumEl) return;
+  if(aiPending){
+    sumEl.textContent = `${unique} schools submitted so far · AI quality analysis runs in the evening`;
+  } else {
+    const dupNote = total>uniqueAI ? ` · ${total-uniqueAI} repeat upload${total-uniqueAI>1?'s':''}` : '';
+    sumEl.textContent = `${uniqueAI} unique of ${total} upload${total===1?'':'s'}${dupNote}`;
+  }
 }
 
 function mediaStrip(row){
@@ -1487,7 +1522,9 @@ document.addEventListener('keydown',(e)=>{
 });
 
 function populateDates(){
-  const dates=[...new Set(ROWS.map(r=>r.date).filter(Boolean))].sort().reverse();
+  // Union of AI-processed dates (ROWS) and live-submission dates (SUB_DATES) so
+  // today appears — and becomes the default — even before the evening AI run.
+  const dates=[...new Set([...ROWS.map(r=>r.date), ...SUB_DATES].filter(Boolean))].sort().reverse();
   SELECTED_DATE = dates[0] || 'all';
   const sel=document.getElementById('dateSel');
   sel.innerHTML = dates.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('')
@@ -1501,11 +1538,20 @@ function updateDateline(){
 }
 
 (async function init(){
-  [ROWS, ROSTER] = await Promise.all([loadData(), loadRoster()]);
+  [ROWS, ROSTER] = await Promise.all([loadData(), loadRoster(), loadSubmissions()]);
   buildSchoolList();
   populateDates();
   updateDateline();
   render();
+  // Keep the live submission count and the "yet to report" list fresh through
+  // the day without a manual reload. (AI flags refresh on the evening run.)
+  setInterval(async()=>{
+    try{
+      await loadSubmissions();
+      renderKpis(); renderAttendance();
+      if(document.getElementById('rosterModal').classList.contains('show')) renderRosterModal();
+    }catch(e){ /* transient fetch failure — try again next tick */ }
+  }, 300000); // every 5 minutes
 })();
 </script>
 </body>
