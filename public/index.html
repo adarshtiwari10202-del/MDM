@@ -138,6 +138,12 @@
   .modal-tools button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
   .modal-search{margin:12px 20px 0;border:1px solid var(--hair);border-radius:8px;
     padding:8px 11px;font:inherit;font-size:13px}
+  .modal-dlrow{display:flex;align-items:center;gap:8px;padding:0 20px}
+  .modal-dlrow .modal-search{flex:1;margin:12px 0 0}
+  .dlbtn{margin-top:12px;white-space:nowrap;padding:8px 12px;border:0;border-radius:8px;cursor:pointer;
+    background:var(--teal,#1a7f6b);color:#fff;font:inherit;font-size:13px;font-weight:700}
+  .dlbtn:hover{filter:brightness(1.05)}
+  .dlbtn:disabled{opacity:.6;cursor:default}
   .modal-list{overflow:auto;padding:8px 20px 20px;margin-top:6px}
   .slrow{display:flex;align-items:center;justify-content:space-between;gap:10px;
     padding:9px 2px;border-bottom:1px solid #f0f0ee}
@@ -316,7 +322,10 @@
         <button data-t="red" class="active">Red 3 days running</button>
         <button data-t="nosubmit">Missed a day (last 3)</button>
       </div>
-      <input class="modal-search" id="fmSearch" placeholder="Search school name or UDISE…">
+      <div class="modal-dlrow">
+        <input class="modal-search" id="fmSearch" placeholder="Search school name or UDISE…">
+        <button class="dlbtn" id="fmExport" type="button" title="Download the current list as an Excel file">⬇ Excel</button>
+      </div>
       <div class="modal-list" id="fmList"></div>
     </div>
   </div>
@@ -988,6 +997,25 @@ function openFlag(tab){ FM_TAB=(tab==='nosubmit'||tab==='red')?tab:'red'; docume
   document.querySelectorAll('#fmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t===FM_TAB));
   renderFlagModal(); document.getElementById('flagModal').classList.add('show'); }
 function closeFlag(){ document.getElementById('flagModal').classList.remove('show'); }
+// The filtered+sorted list for the active tab + search (shared by the modal
+// render and the Excel export so both always match).
+function currentFlagList(){
+  const { flagged }=schoolFlags();
+  const q=(document.getElementById('fmSearch').value||'').trim().toLowerCase();
+  let list=flagged.slice();
+  if(FM_TAB==='red') list=list.filter(f=>f.redStreak);
+  else if(FM_TAB==='nosubmit') list=list.filter(f=>f.missedRecent);
+  list.sort((a,b)=> (b.redStreak?1:0)-(a.redStreak?1:0) || a.name.localeCompare(b.name));
+  if(q) list=list.filter(f=>f.name.toLowerCase().includes(q)||String(f.udise).includes(q));
+  return list;
+}
+// Plain-text reason for a flagged school (used in the Excel export).
+function flagReason(f){
+  const parts=[];
+  if(f.redStreak) parts.push(`Red flags on ${f.redStreak.length} reporting days running (${fmtShort(f.redStreak[0])}–${fmtShort(f.redStreak[f.redStreak.length-1])})`);
+  if(f.missedRecent) parts.push(`Missed reporting on ${f.missedDays.length} of last ${RECENT_DAYS} days (${(f.missedDays||[]).map(fmtShort).join(', ')})`);
+  return parts.join(' ; ');
+}
 function renderFlagModal(){
   const { flagged, days, last3 }=schoolFlags();
   const reds=flagged.filter(f=>f.redStreak).length;
@@ -995,12 +1023,7 @@ function renderFlagModal(){
   const span = last3&&last3.length ? ` (${fmtShort(last3[0])}–${fmtShort(last3[last3.length-1])})` : '';
   document.getElementById('fmSub').textContent =
     `${reds} meal-quality (red ${RED_STREAK_DAYS} days running) · ${nos} reporting gaps${span} · ${days.length} reporting days on record`;
-  const q=(document.getElementById('fmSearch').value||'').trim().toLowerCase();
-  let list=flagged.slice();
-  if(FM_TAB==='red') list=list.filter(f=>f.redStreak);
-  else if(FM_TAB==='nosubmit') list=list.filter(f=>f.missedRecent);
-  list.sort((a,b)=> (b.redStreak?1:0)-(a.redStreak?1:0) || a.name.localeCompare(b.name));
-  if(q) list=list.filter(f=>f.name.toLowerCase().includes(q)||String(f.udise).includes(q));
+  const list=currentFlagList();
   const el=document.getElementById('fmList');
   if(!list.length){ el.innerHTML=`<div class="slrow"><span class="ud">No schools match.</span></div>`; return; }
   el.innerHTML=list.map((f,i)=>{
@@ -1011,6 +1034,61 @@ function renderFlagModal(){
     return `<div class="slrow" data-profile="${f.udise}" role="button" tabindex="0"><div><div class="nm"><span class="sn">${i+1}.</span> ${f.name}</div><div class="ud">UDISE ${f.udise}</div></div>
       <span class="rsn">${badges.join('')}</span></div>`;
   }).join('');
+}
+
+// ---- Excel export of the current flagged list ----
+// Produces a real .xlsx via SheetJS (lazy-loaded from a CDN); if that can't
+// load (offline/blocked), falls back to a UTF-8 CSV that Excel opens directly.
+let __XLSX_LOADING=null;
+function ensureXLSX(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(__XLSX_LOADING) return __XLSX_LOADING;
+  __XLSX_LOADING=new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=()=>resolve(window.XLSX); s.onerror=()=>reject(new Error('cdn blocked'));
+    document.head.appendChild(s);
+  });
+  return __XLSX_LOADING;
+}
+function flagExportRows(){
+  const list=currentFlagList();
+  const header=['S.No','UDISE Code','School Name','Reason'];
+  const rows=list.map((f,i)=>[i+1, String(f.udise), f.name, flagReason(f)]);
+  return { header, rows, list };
+}
+function flagExportName(ext){
+  const { last3 }=schoolFlags();
+  const tag = FM_TAB==='red' ? 'MealQuality_RedStreak' : 'NonReporting';
+  const span = last3&&last3.length ? `${last3[0]}_to_${last3[last3.length-1]}` : 'latest';
+  return `MDM_${tag}_Hargaon_${span}.${ext}`;
+}
+function triggerDownload(blob, filename){
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+}
+function downloadFlagCSV(){
+  const { header, rows }=flagExportRows();
+  const esc=(v)=>{ const s=String(v==null?'':v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
+  const csv=[header,...rows].map(r=>r.map(esc).join(',')).join('\r\n');
+  triggerDownload(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'}), flagExportName('csv'));
+}
+async function exportFlagExcel(){
+  const btn=document.getElementById('fmExport'); const old=btn.textContent;
+  const { header, rows, list }=flagExportRows();
+  if(!list.length){ alert('No schools in the current list to export.'); return; }
+  btn.disabled=true; btn.textContent='…';
+  try{
+    const XLSX=await ensureXLSX();
+    const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
+    ws['!cols']=[{wch:6},{wch:16},{wch:40},{wch:52}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, FM_TAB==='red'?'Meal quality':'Non-reporting');
+    XLSX.writeFile(wb, flagExportName('xlsx'));
+  }catch(e){
+    downloadFlagCSV(); // CDN unavailable → CSV (opens in Excel)
+  }finally{ btn.disabled=false; btn.textContent=old; }
 }
 
 const ITEM_LABELS={cooking:'Cooking',cooked_meal:'Cooked meal',serving_video:'Serving (video)',plate:'Plate'};
@@ -1325,6 +1403,7 @@ document.getElementById('fmTabs').addEventListener('click',(e)=>{
   b.classList.add('active'); FM_TAB=b.dataset.t; renderFlagModal();
 });
 document.getElementById('fmSearch').addEventListener('input',renderFlagModal);
+document.getElementById('fmExport').addEventListener('click',exportFlagExcel);
 
 // profile view wiring (in-page, not a modal)
 document.getElementById('pfBack').addEventListener('click',closeProfile);
