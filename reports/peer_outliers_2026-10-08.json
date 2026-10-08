@@ -1,105 +1,231 @@
 {
-  "generatedAt": "2026-10-08T20:46:01.833Z",
+  "generatedAt": "2026-10-08T21:11:42.221Z",
   "date": "2026-10-08",
   "schemaVersion": "peer-outliers-v1",
   "note": "Isolated test lane. Ranks visual-attribute divergence from the block cohort majority. Not a quality judgment.",
   "dishes": {
     "dal": {
       "dish": "Dal",
-      "cohortSize": 157,
+      "cohortSize": 174,
       "majority": {
         "dal_color": {
           "value": "yellow",
-          "share": 0.7070063694267515,
-          "support": 157
+          "share": 0.6551724137931034,
+          "support": 174
         },
         "dal_consistency": {
           "value": "medium",
-          "share": 0.7692307692307693,
-          "support": 156
+          "share": 0.622093023255814,
+          "support": 172
         },
         "dal_oil_film": {
-          "value": "yes",
-          "share": 0.6891891891891891,
-          "support": 148
+          "value": "no",
+          "share": 0.6024096385542169,
+          "support": 166
         },
         "dal_vegetables_visible": {
           "value": "no",
-          "share": 0.7948717948717948,
-          "support": 156
+          "share": 0.8023255813953488,
+          "support": 172
         },
         "dal_fill_level": {
           "value": "adequate",
-          "share": 0.5290322580645161,
-          "support": 155
+          "share": 0.5568862275449101,
+          "support": 167
         }
       },
       "outliers": [
         {
-          "udise": "9240507001",
-          "name": "BHAISAHA (PS)",
-          "fileId": "1zagoOx8aL139V6EE3SodIeDq0yVFCy7U",
+          "udise": "9240501001",
+          "name": "BHEEKHPUR (PS)",
+          "fileId": "1hMnJuv7-QNhVBmAZMa2Mq2OtoMUXc_jw",
           "divergence": 4,
           "differs": [
             {
               "attr": "dal_color",
-              "value": "brown",
+              "value": "dark_yellow",
               "majority": "yellow",
-              "majorityShare": 0.7070063694267515
+              "majorityShare": 0.6551724137931034
             },
             {
               "attr": "dal_consistency",
               "value": "watery",
               "majority": "medium",
-              "majorityShare": 0.7692307692307693
+              "majorityShare": 0.622093023255814
             },
             {
               "attr": "dal_oil_film",
-              "value": "no",
-              "majority": "yes",
-              "majorityShare": 0.6891891891891891
-            },
-            {
-              "attr": "dal_fill_level",
-              "value": "generous",
-              "majority": "adequate",
-              "majorityShare": 0.5290322580645161
-            }
-          ],
-          "notes": "A large vessel contains a highly diluted, watery dal liquid."
-        },
-        {
-          "udise": "9240511001",
-          "name": "PARSEHRA NATH (PS)",
-          "fileId": "1t2OfJ0jq0D_-Qj5EmYbJlHcdPz6fgUJQ",
-          "divergence": 4,
-          "differs": [
-            {
-              "attr": "dal_color",
-              "value": "brown",
-              "majority": "yellow",
-              "majorityShare": 0.7070063694267515
-            },
-            {
-              "attr": "dal_consistency",
-              "value": "watery",
-              "majority": "medium",
-              "majorityShare": 0.7692307692307693
-            },
-            {
-              "attr": "dal_oil_film",
-              "value": "no",
-              "majority": "yes",
-              "majorityShare": 0.6891891891891891
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.6024096385542169
             },
             {
               "attr": "dal_fill_level",
               "value": "sparse",
               "majority": "adequate",
-              "majorityShare": 0.5290322580645161
+              "majorityShare": 0.5568862275449101
             }
           ],
-          "notes": "A brownish dal preparation is visible inside a pressure cooker with a ladle."
+          "notes": "A bucket of thin dal with temper/tadka is placed next to a large basket of rotis. | Students are seated at a long outdoor table eating rotis with dal and green sabzi."
+        },
+        {
+          "udise": "9240508402",
+          "name": "NIGOHA (Composite)",
+          "fileId": "1pCMceZAyumjHLcFM0-Qw5dfeuRKc3eu2",
+          "divergence": 4,
+          "differs": [
+            {
+              "attr": "dal_color",
+              "value": "dark_yellow",
+              "majority": "yellow",
+              "majorityShare": 0.6551724137931034
+            },
+            {
+              "attr": "dal_oil_film",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.6024096385542169
+            },
+            {
+              "attr": "dal_vegetables_visible",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.8023255813953488
+            },
+            {
+              "attr": "dal_fill_level",
+              "value": "generous",
+              "majority": "adequate",
+              "majorityShare": 0.5568862275449101
+            }
+          ],
+          "notes": "The pressure cooker contains dal with visible vegetable pieces and an oil film on top. | Yellow dal is being served alongside roti onto metal plates."
+        },
+        {
+          "udise": "9240500602",
+          "name": "OJHIYAPUR (PS)",
+          "fileId": "1mKN-kqcXEFgyGuTo3cdWFB4RHueRdTy-",
+          "divergence": 4,
+          "differs": [
+            {
+              "attr": "dal_color",
+              "value": "brown",
+              "majority": "yellow",
+              "majorityShare": 0.6551724137931034
+            },
+            {
+              "attr": "dal_consistency",
+              "value": "watery",
+              "majority": "medium",
+              "majorityShare": 0.622093023255814
+            },
+            {
+              "attr": "dal_oil_film",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.6024096385542169
+            },
+            {
+              "attr": "dal_vegetables_visible",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.8023255813953488
+            }
+          ],
+          "notes": "A stack of rotis is kept on a newspaper beside the vessel. | Dal containing potato and tomato pieces is served in a bowl next to a plate with roti."
+        },
+        {
+          "udise": "9240500802",
+          "name": "QYOTI KALAN (UPS)",
+          "fileId": "1Sf1PT_y3r2-V7cq3qMNuXtpnx2Gf2tso",
+          "divergence": 4,
+          "differs": [
+            {
+              "attr": "dal_color",
+              "value": "dark_yellow",
+              "majority": "yellow",
+              "majorityShare": 0.6551724137931034
+            },
+            {
+              "attr": "dal_oil_film",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.6024096385542169
+            },
+            {
+              "attr": "dal_vegetables_visible",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.8023255813953488
+            },
+            {
+              "attr": "dal_fill_level",
+              "value": "generous",
+              "majority": "adequate",
+              "majorityShare": 0.5568862275449101
+            }
+          ],
+          "notes": "A metal ladle is resting inside the large pot of dal. | A vessel of dal and a container of rice are shown alongside a plate with rotis."
+        },
+        {
+          "udise": "9240509301",
+          "name": "RICHHIN (PS)",
+          "fileId": "1nVvkDEA_d5TCMrW85HnV_6EbtGKRgIED",
+          "divergence": 4,
+          "differs": [
+            {
+              "attr": "dal_color",
+              "value": "dark_yellow",
+              "majority": "yellow",
+              "majorityShare": 0.6551724137931034
+            },
+            {
+              "attr": "dal_oil_film",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.6024096385542169
+            },
+            {
+              "attr": "dal_vegetables_visible",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.8023255813953488
+            },
+            {
+              "attr": "dal_fill_level",
+              "value": "generous",
+              "majority": "adequate",
+              "majorityShare": 0.5568862275449101
+            }
+          ],
+          "notes": "A tray stacked with rotis is visible alongside the pot of dal. | Yellow dal containing small visible tomato bits is being served from a bucket into thalis."
+        },
+        {
+          "udise": "9240505502",
+          "name": "AKTIYARPUR (UPS)",
+          "fileId": "1aIUZaswPcfI6xbNVvGYRM1sG0EO6W7po",
+          "divergence": 3,
+          "differs": [
+            {
+              "attr": "dal_consistency",
+              "value": "watery",
+              "majority": "medium",
+              "majorityShare": 0.622093023255814
+            },
+            {
+              "attr": "dal_oil_film",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.6024096385542169
+            },
+            {
+              "attr": "dal_fill_level",
+              "value": "generous",
+              "majority": "adequate",
+              "majorityShare": 0.5568862275449101
+            }
+          ],
+          "notes": "Cumin seed tempering is visible on top of the yellow dal. | Yellow dal with dark tempering seeds is being served onto a compartmentalized metal plate."
         },
         {
           "udise": "9240502902",
@@ -108,220 +234,112 @@
           "divergence": 3,
           "differs": [
             {
-              "attr": "dal_consistency",
-              "value": "watery",
-              "majority": "medium",
-              "majorityShare": 0.7692307692307693
+              "attr": "dal_color",
+              "value": "dark_yellow",
+              "majority": "yellow",
+              "majorityShare": 0.6551724137931034
             },
             {
               "attr": "dal_oil_film",
-              "value": "no",
-              "majority": "yes",
-              "majorityShare": 0.6891891891891891
-            },
-            {
-              "attr": "dal_fill_level",
-              "value": "generous",
-              "majority": "adequate",
-              "majorityShare": 0.5290322580645161
-            }
-          ],
-          "notes": "Yellow dal is served from a bucket onto plates along with chapatis in a cloth basket."
-        },
-        {
-          "udise": "9240504208",
-          "name": "CHAKJOSHI (PS)",
-          "fileId": "171ZUHVAtfT-D8Z0L8_zf66gk0MsgsCO4",
-          "divergence": 3,
-          "differs": [
-            {
-              "attr": "dal_oil_film",
-              "value": "no",
-              "majority": "yes",
-              "majorityShare": 0.6891891891891891
-            },
-            {
-              "attr": "dal_vegetables_visible",
               "value": "yes",
               "majority": "no",
-              "majorityShare": 0.7948717948717948
+              "majorityShare": 0.6024096385542169
             },
             {
               "attr": "dal_fill_level",
               "value": "generous",
               "majority": "adequate",
-              "majorityShare": 0.5290322580645161
+              "majorityShare": 0.5568862275449101
             }
           ],
-          "notes": "Yellow dal cooked with green herbs or vegetables in a cooker alongside stacked rotis."
+          "notes": "Dal is being served from a large stainless steel bucket along with rotis."
         },
         {
-          "udise": "9240501701",
-          "name": "FATTEPUR MATIMPUR (PS)",
-          "fileId": "1GxK1tgstwm2kC1jF2dkA4o4Jzwq8ZLE2",
+          "udise": "9240508101",
+          "name": "BADELIYA (PS)",
+          "fileId": "1Du5NxQinJ_0LP2tzIMemTMTNeQFyO7Dz",
           "divergence": 3,
           "differs": [
             {
               "attr": "dal_color",
               "value": "dark_yellow",
               "majority": "yellow",
-              "majorityShare": 0.7070063694267515
+              "majorityShare": 0.6551724137931034
+            },
+            {
+              "attr": "dal_oil_film",
+              "value": "yes",
+              "majority": "no",
+              "majorityShare": 0.6024096385542169
             },
             {
               "attr": "dal_vegetables_visible",
               "value": "yes",
               "majority": "no",
-              "majorityShare": 0.7948717948717948
-            },
-            {
-              "attr": "dal_fill_level",
-              "value": "generous",
-              "majority": "adequate",
-              "majorityShare": 0.5290322580645161
+              "majorityShare": 0.8023255813953488
             }
           ],
-          "notes": "A metal pot containing dal is placed alongside a platter stacked with rotis."
+          "notes": "Yellowish vegetable pieces are mixed into the cooked dal being stirred with a ladle."
         },
         {
-          "udise": "9240500103",
-          "name": "KAIMA (PS)",
-          "fileId": "1ffRnYLvVxlk0TgV7H_xTWT4QkexRFqaZ",
-          "divergence": 3,
-          "differs": [
-            {
-              "attr": "dal_consistency",
-              "value": "watery",
-              "majority": "medium",
-              "majorityShare": 0.7692307692307693
-            },
-            {
-              "attr": "dal_oil_film",
-              "value": "no",
-              "majority": "yes",
-              "majorityShare": 0.6891891891891891
-            },
-            {
-              "attr": "dal_fill_level",
-              "value": "sparse",
-              "majority": "adequate",
-              "majorityShare": 0.5290322580645161
-            }
-          ],
-          "notes": "Yellow dal is served into steel plates alongside rotis."
-        },
-        {
-          "udise": "9240511901",
-          "name": "KANYA HARGAON (Composite)",
-          "fileId": "1XqfWdhYyIQUoXlBkBPPEgbeHSgWB9HZx",
+          "udise": "9240505201",
+          "name": "BAKSOHIYA (PS)",
+          "fileId": "1HAZuxn8lDI-NbLriTedmNZAnVJ0c4EUm",
           "divergence": 3,
           "differs": [
             {
               "attr": "dal_color",
               "value": "dark_yellow",
               "majority": "yellow",
-              "majorityShare": 0.7070063694267515
+              "majorityShare": 0.6551724137931034
             },
             {
               "attr": "dal_consistency",
               "value": "watery",
               "majority": "medium",
-              "majorityShare": 0.7692307692307693
+              "majorityShare": 0.622093023255814
             },
-            {
-              "attr": "dal_fill_level",
-              "value": "generous",
-              "majority": "adequate",
-              "majorityShare": 0.5290322580645161
-            }
-          ],
-          "notes": "Dal with dark tempering is present in two vessels alongside chapatis stacked on newspaper."
-        },
-        {
-          "udise": "9240504202",
-          "name": "KATESAR (UPS)",
-          "fileId": "1eIeDTt74O8bVvtICdmg7eUYkepg61HUv",
-          "divergence": 3,
-          "differs": [
             {
               "attr": "dal_oil_film",
-              "value": "no",
-              "majority": "yes",
-              "majorityShare": 0.6891891891891891
-            },
-            {
-              "attr": "dal_vegetables_visible",
               "value": "yes",
               "majority": "no",
-              "majorityShare": 0.7948717948717948
-            },
-            {
-              "attr": "dal_fill_level",
-              "value": "generous",
-              "majority": "adequate",
-              "majorityShare": 0.5290322580645161
+              "majorityShare": 0.6024096385542169
             }
           ],
-          "notes": "Dal is contained in a metal bucket alongside rotis placed in a plastic basin."
+          "notes": "Rotis are arranged on a large metal tray beside the pot containing dal. | Potato chunks are served mixed in thin yellow dal along with rotis."
         },
         {
-          "udise": "9240511301",
-          "name": "KORAIYA BHADEVAN (PS)",
-          "fileId": "1NwCOPpRiZZD7LZDT3K4xLuW8dXuxYSh-",
+          "udise": "9240508301",
+          "name": "BENIPUR WAIZPUR (PS)",
+          "fileId": "1uzzixxJ1twbY30C2G6hNH-XYtTb-xJgB",
           "divergence": 3,
           "differs": [
-            {
-              "attr": "dal_color",
-              "value": "dark_yellow",
-              "majority": "yellow",
-              "majorityShare": 0.7070063694267515
-            },
             {
               "attr": "dal_consistency",
               "value": "watery",
               "majority": "medium",
-              "majorityShare": 0.7692307692307693
+              "majorityShare": 0.622093023255814
             },
-            {
-              "attr": "dal_vegetables_visible",
-              "value": "yes",
-              "majority": "no",
-              "majorityShare": 0.7948717948717948
-            }
-          ],
-          "notes": "A container filled with rotis is present alongside the dal vessel."
-        },
-        {
-          "udise": "9240506702",
-          "name": "MAHADEV ATRA (Composite)",
-          "fileId": "1UQp3hNG8gtxxmcplyc1ryGmJh2lAiRQh",
-          "divergence": 3,
-          "differs": [
             {
               "attr": "dal_oil_film",
-              "value": "no",
-              "majority": "yes",
-              "majorityShare": 0.6891891891891891
-            },
-            {
-              "attr": "dal_vegetables_visible",
               "value": "yes",
               "majority": "no",
-              "majorityShare": 0.7948717948717948
+              "majorityShare": 0.6024096385542169
             },
             {
               "attr": "dal_fill_level",
               "value": "generous",
               "majority": "adequate",
-              "majorityShare": 0.5290322580645161
+              "majorityShare": 0.5568862275449101
             }
           ],
-          "notes": "The pot contains a frothy yellow dal with visible tomato bits and herbs."
+          "notes": "A metal pressure cooker contains yellow dal alongside a large plate of rotis. | Roti is served alongside thin yellow dal on metal plates."
         }
       ]
     },
     "sabzi": {
       "dish": "Sabzi",
-      "cohortSize": 2,
+      "cohortSize": 12,
       "majority": null,
       "outliers": [],
       "note": "Cohort too small for stable peer analysis (minimum 20)."
