@@ -27,6 +27,26 @@
   .topbar .meta{color:#cfe0f5;font-size:13px;text-align:right}
   .livestamp{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;color:#9fd9c4;font-size:11.5px;margin-top:3px}
   .livestamp .livedot{width:7px;height:7px;border-radius:50%;background:#22c38f;box-shadow:0 0 0 0 rgba(34,195,143,.6);animation:livepulse 2s infinite}
+  /* small corner "Test" chip — intentionally muted so it's clearly a side-track */
+  .testchip{display:inline-block;margin-top:6px;padding:1px 8px;border:1px dashed #4a6a94;border-radius:999px;
+    color:#B9CBE4;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;user-select:none}
+  .testchip:hover{color:#fff;border-color:#8aa6cc}
+  /* Test (peer analysis) modal — self-contained, reuses .modal-back styles */
+  .tp-row{display:flex;gap:12px;align-items:flex-start;padding:10px 14px;border-top:1px solid var(--hair)}
+  .tp-row:first-child{border-top:0}
+  .tp-thumb{flex:0 0 108px;height:80px;background:#f4f6fa;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--grey);font-size:11px}
+  .tp-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .tp-body{flex:1;min-width:0}
+  .tp-name{font-weight:700;font-size:13.5px;color:var(--ink)}
+  .tp-udise{color:var(--grey);font-size:11.5px;margin-top:1px}
+  .tp-diff{margin-top:6px;font-size:12.5px;line-height:1.45}
+  .tp-diff .k{color:#2A2E36;font-weight:600}
+  .tp-diff .v{color:var(--red);font-weight:600}
+  .tp-diff .m{color:var(--grey)}
+  .tp-chip{display:inline-block;padding:1px 7px;border-radius:999px;background:#fdeded;color:var(--red);font-size:11px;font-weight:700;margin-left:6px}
+  .tp-section{padding:14px 20px 4px;font-weight:800;color:var(--navy);font-size:14px;text-transform:uppercase;letter-spacing:.4px}
+  .tp-maj{padding:0 20px 10px;color:var(--grey);font-size:12px}
+  .tp-note{margin:14px 20px 0;padding:10px 12px;background:#fff7e6;border:1px solid #e9d99a;border-radius:8px;color:#7a5b00;font-size:12.5px;line-height:1.5}
   @keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(34,195,143,.55)}70%{box-shadow:0 0 0 6px rgba(34,195,143,0)}100%{box-shadow:0 0 0 0 rgba(34,195,143,0)}}
   .schooljump{margin-top:8px;display:flex;justify-content:flex-end;gap:6px;align-items:center}
   .schooljump input{width:230px;max-width:52vw;padding:7px 10px;border-radius:8px;border:1px solid #33507a;
@@ -219,6 +239,7 @@
       <div class="meta">
         <div id="dateline">—</div>
         <div id="liveStamp" class="livestamp"></div>
+        <div id="testChip" class="testchip" role="button" tabindex="0" title="Peer-comparison preview — not part of the live monitoring">Test</div>
         <div class="schooljump">
           <input id="schoolJump" list="schoolList" placeholder="Go to school — UDISE or name…"
                  autocomplete="off" aria-label="Go to a school's history">
@@ -344,6 +365,26 @@
         <button class="dlbtn" id="fmExport" type="button" title="Download the current list as an Excel file">⬇ Excel</button>
       </div>
       <div class="modal-list" id="fmList"></div>
+    </div>
+  </div>
+
+  <div class="modal-back" id="testModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tpTitle">
+      <div class="modal-h">
+        <div>
+          <h3 id="tpTitle">Peer-comparison preview</h3>
+          <div class="msub" id="tpSub">Test lane — not part of the live monitoring</div>
+        </div>
+        <button class="x" id="tpClose" aria-label="Close">×</button>
+      </div>
+      <div class="tp-note">
+        This is a <b>Phase-1 test</b> of peer analysis: for each prescribed dish on <b id="tpDate">—</b>,
+        we rank schools whose dal / sabzi attributes diverge most from the block cohort's majority profile.
+        It is a research prototype — <b>not a quality judgment</b> — and does not feed the live flagging system.
+      </div>
+      <div class="modal-list" id="tpList" style="padding-bottom:20px">
+        <div class="tp-row"><span class="tp-udise">Loading…</span></div>
+      </div>
     </div>
   </div>
 
@@ -1511,6 +1552,56 @@ document.getElementById('rmTabs').addEventListener('click',(e)=>{
 document.getElementById('rmSearch').addEventListener('input',renderRosterModal);
 document.getElementById('rmExport').addEventListener('click',exportRosterExcel);
 
+// ============================================================
+// TEST LANE — peer-comparison preview (Phase 1).
+// Isolated: hits /api/peer-outliers only when the Test chip is clicked. Does
+// NOT read /api/results or affect any live dashboard surface.
+// ============================================================
+const TEST_DATE = '2026-10-08';
+const DISH_LABEL={ dal_color:'color', dal_consistency:'consistency', dal_oil_film:'oil film', dal_vegetables_visible:'vegetables', dal_fill_level:'fill level',
+  sabzi_base:'base', sabzi_color:'color', sabzi_oil_film:'oil film', sabzi_type:'type', sabzi_fill_level:'fill level' };
+const prettyVal=(v)=>String(v||'').replace(/_/g,' ');
+async function openTestModal(){
+  const sub=document.getElementById('tpSub');
+  const dEl=document.getElementById('tpDate'); if(dEl) dEl.textContent=fmtDate(TEST_DATE);
+  const el=document.getElementById('tpList');
+  el.innerHTML=`<div class="tp-row"><span class="tp-udise">Loading peer analysis for ${fmtDate(TEST_DATE)}…</span></div>`;
+  document.getElementById('testModal').classList.add('show');
+  let j=null;
+  try{ const r=await fetch(`/api/peer-outliers?date=${TEST_DATE}`); if(r.ok) j=await r.json(); else if(r.status===404) j={__nodata:true}; }catch(e){ /* fall through */ }
+  if(!j){ el.innerHTML=`<div class="tp-row"><span class="tp-udise">Could not load peer-analysis data. Try again shortly.</span></div>`; return; }
+  if(j.__nodata){ el.innerHTML=`<div class="tp-row"><span class="tp-udise">No peer-analysis data has been generated for ${fmtDate(TEST_DATE)} yet.</span></div>`; return; }
+  sub.textContent=`Test lane · ${fmtDate(j.date||TEST_DATE)} · dish-wise outliers vs the block majority`;
+  const parts=[];
+  for(const [,ds] of Object.entries(j.dishes||{})){
+    parts.push(`<div class="tp-section">${ds.dish} — cohort of ${ds.cohortSize} schools</div>`);
+    if(ds.majority){
+      const majBits=Object.entries(ds.majority).filter(([,m])=>m).map(([k,m])=>`${DISH_LABEL[k]||k}: <b>${prettyVal(m.value)}</b> (${Math.round(m.share*100)}%)`);
+      parts.push(`<div class="tp-maj">Block majority — ${majBits.join(' · ')}</div>`);
+    }
+    if(!ds.outliers || !ds.outliers.length){ parts.push(`<div class="tp-row"><span class="tp-udise">${ds.note || 'No outliers to surface.'}</span></div>`); continue; }
+    for(const o of ds.outliers.slice(0,5)){
+      const diffs=(o.differs||[]).map(d=>`<span class="k">${DISH_LABEL[d.attr]||d.attr}:</span> <span class="v">${prettyVal(d.value)}</span> <span class="m">vs block norm ${prettyVal(d.majority)}</span>`).join(' · ');
+      const img=o.fileId?`<img loading="lazy" src="/api/media?id=${encodeURIComponent(o.fileId)}" alt="">`:'photo';
+      parts.push(`<div class="tp-row">
+        <div class="tp-thumb">${img}</div>
+        <div class="tp-body">
+          <div class="tp-name">${o.name||o.udise} <span class="tp-chip">differs on ${o.divergence}</span></div>
+          <div class="tp-udise">UDISE ${o.udise}</div>
+          <div class="tp-diff">${diffs}</div>
+          ${o.notes?`<div class="tp-diff m" style="margin-top:4px">${o.notes}</div>`:''}
+        </div>
+      </div>`);
+    }
+  }
+  el.innerHTML=parts.join('');
+}
+function closeTestModal(){ document.getElementById('testModal').classList.remove('show'); }
+document.getElementById('testChip').addEventListener('click',openTestModal);
+document.getElementById('testChip').addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openTestModal(); }});
+document.getElementById('tpClose').addEventListener('click',closeTestModal);
+document.getElementById('testModal').addEventListener('click',(e)=>{ if(e.target.id==='testModal') closeTestModal(); });
+
 // flagged-schools tiles → open the modal on the matching tab
 const fq2El=document.getElementById('flagQuality2');
 fq2El.addEventListener('click',()=>openFlag('red2'));
@@ -1566,7 +1657,7 @@ document.getElementById('schoolJump').addEventListener('keydown',(e)=>{ if(e.key
 document.getElementById('schoolJump').addEventListener('change',(e)=>{ if(/\s—\s/.test(e.target.value)) jumpToSchool(); });
 
 document.addEventListener('keydown',(e)=>{
-  if(e.key==='Escape'){ if(profileOpen()) closeProfile(); closeRoster(); closeFlag(); }
+  if(e.key==='Escape'){ if(profileOpen()) closeProfile(); closeRoster(); closeFlag(); closeTestModal(); }
   if((e.key==='Enter'||e.key===' ')){
     const pf=e.target.closest && e.target.closest('[data-profile]');
     if(pf){ e.preventDefault(); openProfile(pf.dataset.profile); }

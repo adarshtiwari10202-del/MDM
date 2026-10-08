@@ -1,0 +1,90 @@
+name: Peer analysis (test lane)
+
+# Isolated side-track: re-reads cooked-meal photos for a target date with a
+# focused attribute prompt (dal + sabzi only). Writes a separate JSON file in
+# reports/. Does NOT touch the Results sheet, the flag engine, or anything the
+# live dashboard flag tiles consume.
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: Target reporting date (YYYY-MM-DD)
+        default: '2026-10-08'
+      concurrency:
+        description: Parallel submissions for the AI pass
+        default: '4'
+      top_n:
+        description: Top-N outliers to keep per dish
+        default: '10'
+
+permissions:
+  contents: write
+
+jobs:
+  peer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Safety snapshot BEFORE (live Results sheet MD5)
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          RESULTS_SHEET_TAB: Results
+          DATA_MODE: live
+        run: node scripts/results-md5.js | tee /tmp/md5-before.txt
+
+      - name: Peer attribute analysis
+        env:
+          DATA_MODE: live
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.6-flash
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
+          BASELINE_SHEET_ID: ${{ secrets.BASELINE_SHEET_ID }}
+          DAILY_SHEET_TAB: Form Responses 1
+          BASELINE_SHEET_TAB: Form Responses 1
+          DATE: ${{ github.event.inputs.date || '2026-10-08' }}
+          CONCURRENCY: ${{ github.event.inputs.concurrency || '4' }}
+        run: node scripts/peer-analyze.js
+
+      - name: Score outliers
+        env:
+          DATE: ${{ github.event.inputs.date || '2026-10-08' }}
+          TOP_N: ${{ github.event.inputs.top_n || '10' }}
+        run: node scripts/peer-outliers.js
+
+      - name: Safety snapshot AFTER (live Results sheet MD5)
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          RESULTS_SHEET_TAB: Results
+          DATA_MODE: live
+        run: node scripts/results-md5.js | tee /tmp/md5-after.txt
+
+      - name: Verify Results sheet was NOT modified
+        run: |
+          echo "=== BEFORE ==="; cat /tmp/md5-before.txt
+          echo "=== AFTER  ==="; cat /tmp/md5-after.txt
+          B=$(grep -oE 'RESULTS_MD5=[0-9a-f]+' /tmp/md5-before.txt)
+          A=$(grep -oE 'RESULTS_MD5=[0-9a-f]+' /tmp/md5-after.txt)
+          if [ "$A" = "$B" ]; then
+            echo "✅ Results sheet is UNCHANGED ($A)"
+          else
+            echo "❌ Results sheet CHANGED — $B → $A"; exit 1
+          fi
+
+      - name: Commit peer-analysis + outliers JSON back to branch
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f reports/peer_analysis_*.json reports/peer_outliers_*.json
+          git commit -m "data: peer analysis snapshot [skip ci]" || echo "no changes"
+          git push origin HEAD:claude/mdm-monitoring-pipeline-xd3l9p

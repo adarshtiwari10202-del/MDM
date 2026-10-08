@@ -3,6 +3,7 @@
   "functions": {
     "api/results.js": { "maxDuration": 60 },
     "api/submissions.js": { "maxDuration": 30 },
+    "api/peer-outliers.js": { "maxDuration": 15 },
     "api/media.js": { "maxDuration": 30 },
     "api/verdict.js": { "maxDuration": 60 },
     "api/cron/process.js": { "maxDuration": 60 }
