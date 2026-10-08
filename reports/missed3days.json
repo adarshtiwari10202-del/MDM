@@ -1,6 +1,12 @@
 {
-  "generatedAt": "2026-10-08T17:33:58.925Z",
+  "generatedAt": "2026-10-08T18:34:11.874Z",
   "days": [
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-03",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
     "2026-10-08"
   ],
   "cutoffDay": "",
@@ -8,69 +14,645 @@
   "rosterSize": 195,
   "perDay": [
     {
+      "date": "2026-09-30",
+      "schools": 140
+    },
+    {
+      "date": "2026-10-01",
+      "schools": 127
+    },
+    {
+      "date": "2026-10-03",
+      "schools": 141
+    },
+    {
+      "date": "2026-10-05",
+      "schools": 172
+    },
+    {
+      "date": "2026-10-06",
+      "schools": 183
+    },
+    {
+      "date": "2026-10-07",
+      "schools": 184
+    },
+    {
       "date": "2026-10-08",
       "schools": 186
     }
   ],
   "excludedAfter7pm": [],
-  "missedCount": 9,
-  "allThreeCount": 186,
-  "md5": "d07fc5a3392b5932a831a8d7bc21ef1e",
+  "missedCount": 102,
+  "allThreeCount": 93,
+  "md5": "0f23270e5f8049ab27d8218d1ac540c3",
   "missed": [
+    {
+      "udise": "9240506307",
+      "name": "AGUAPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240505501",
+      "name": "AKTIYARPUR (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240505502",
+      "name": "AKTIYARPUR (UPS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240507501",
+      "name": "AMITIYA (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240500101",
+      "name": "ARMI (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240502902",
+      "name": "BAD KHERWA (Composite)",
+      "reported": 2,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05",
+        "2026-10-06"
+      ]
+    },
+    {
+      "udise": "9240508101",
+      "name": "BADELIYA (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240502901",
+      "name": "BADKHERVA NAVEEN (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-06"
+      ]
+    },
     {
       "udise": "9240509502",
       "name": "BADKHERVA SHIVPURI (PS)",
       "reported": 0,
       "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05",
+        "2026-10-06",
+        "2026-10-07",
         "2026-10-08"
+      ]
+    },
+    {
+      "udise": "9240507802",
+      "name": "BAHERWA (UPS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240505201",
+      "name": "BAKSOHIYA (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240504901",
+      "name": "BANIHAR (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240504602",
+      "name": "BAROSA (Composite)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
       ]
     },
     {
       "udise": "9240503204",
       "name": "BEHADPATU (PS)",
-      "reported": 0,
+      "reported": 5,
       "missedDays": [
+        "2026-10-01",
         "2026-10-08"
       ]
     },
     {
       "udise": "9240502002",
       "name": "BELAMAU KALAN (Composite)",
-      "reported": 0,
+      "reported": 5,
       "missedDays": [
+        "2026-10-01",
         "2026-10-08"
       ]
     },
     {
       "udise": "9240502101",
       "name": "BELAMAU KHURD (PS)",
-      "reported": 0,
+      "reported": 2,
       "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-07",
         "2026-10-08"
+      ]
+    },
+    {
+      "udise": "9240508301",
+      "name": "BENIPUR WAIZPUR (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240508302",
+      "name": "BENIPUR WAIZPUR (UPS)",
+      "reported": 3,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240500502",
+      "name": "BENIRAJA DASHRATHPUR (Composite)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240509601",
+      "name": "BHADEVA (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
+      ]
+    },
+    {
+      "udise": "9240507001",
+      "name": "BHAISAHA (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240501001",
+      "name": "BHEEKHPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
+      ]
+    },
+    {
+      "udise": "9240504205",
+      "name": "BHUDKUDI (PS)",
+      "reported": 3,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240506401",
+      "name": "CHAUCHIYA (PS)",
+      "reported": 1,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05",
+        "2026-10-06",
+        "2026-10-07"
+      ]
+    },
+    {
+      "udise": "9240500503",
+      "name": "DASHRATPUR (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240501102",
+      "name": "DEEPPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
+      ]
+    },
+    {
+      "udise": "9240501802",
+      "name": "DHOLAI KALAN (UPS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240509202",
+      "name": "DOSTPUR (UPS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240501702",
+      "name": "FATTEPUR NAVINAGAR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240503302",
+      "name": "FIROJPUR NAYAGAON (UPS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240500805",
+      "name": "GANESHPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240510901",
+      "name": "GAURA PATTI (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240511902",
+      "name": "HARGAON (UPS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240510101",
+      "name": "HARGAON-1 (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
       ]
     },
     {
       "udise": "9240507203",
       "name": "HARI RAMPUR (Composite)",
-      "reported": 0,
+      "reported": 4,
       "missedDays": [
+        "2026-10-01",
+        "2026-10-06",
         "2026-10-08"
       ]
     },
     {
       "udise": "9240515301",
       "name": "HARIVANSHPUR (PS)",
-      "reported": 0,
+      "reported": 2,
       "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-07",
         "2026-10-08"
+      ]
+    },
+    {
+      "udise": "9240507403",
+      "name": "HILALPUR (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240500201",
+      "name": "IBRAHIMPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
+      ]
+    },
+    {
+      "udise": "9240509401",
+      "name": "ISMAIYL (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-05"
       ]
     },
     {
       "udise": "9240505401",
       "name": "JHARIYA (PS)",
-      "reported": 0,
+      "reported": 3,
       "missedDays": [
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05",
         "2026-10-08"
+      ]
+    },
+    {
+      "udise": "9240510301",
+      "name": "KABEERPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-07"
+      ]
+    },
+    {
+      "udise": "9240511601",
+      "name": "KABEERPUR (UPS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240511003",
+      "name": "KAJIPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240506803",
+      "name": "KAKRAHI (Composite)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240506802",
+      "name": "KAKRAHI (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
+      ]
+    },
+    {
+      "udise": "9240510503",
+      "name": "KALINAMA (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240510502",
+      "name": "KALYANPUR (Composite)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240508703",
+      "name": "KATIYARA (Composite)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240504501",
+      "name": "KATKA (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240508201",
+      "name": "KHAJUWA (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240512001",
+      "name": "KHEDRAPUR (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-05",
+        "2026-10-07"
+      ]
+    },
+    {
+      "udise": "9240500301",
+      "name": "KORAIYA GANGADAS (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240504002",
+      "name": "KORAIYA JAGDEESHPUR (Composite)",
+      "reported": 5,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240506503",
+      "name": "KORAYA JANGAL (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240507602",
+      "name": "KUSIYARI (Composite)",
+      "reported": 5,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240502603",
+      "name": "LAGHNIYA NEWADA (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240503901",
+      "name": "MANGRUWA (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240503902",
+      "name": "MANGRUWA (UPS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240501703",
+      "name": "MATEENPUR (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240506001",
+      "name": "MOHARSA (PS)",
+      "reported": 2,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05",
+        "2026-10-06"
+      ]
+    },
+    {
+      "udise": "9240502804",
+      "name": "MOTIPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240503502",
+      "name": "MUDRASAN-2 (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
+      ]
+    },
+    {
+      "udise": "9240501601",
+      "name": "MUMTAZPUR (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240501602",
+      "name": "MUMTAZPUR (UPS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240503402",
+      "name": "NARAIYANPUR (Composite)",
+      "reported": 5,
+      "missedDays": [
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240502501",
+      "name": "NAROOTAMPUR (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
       ]
     },
     {
@@ -78,15 +660,337 @@
       "name": "NAUNER (Composite)",
       "reported": 0,
       "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05",
+        "2026-10-06",
+        "2026-10-07",
         "2026-10-08"
+      ]
+    },
+    {
+      "udise": "9240504103",
+      "name": "NAVI NAGAR (UPS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240504101",
+      "name": "NAVINAGAR-1 (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240506603",
+      "name": "NAYAPURWA (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240508402",
+      "name": "NIGOHA (Composite)",
+      "reported": 2,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05",
+        "2026-10-06"
+      ]
+    },
+    {
+      "udise": "9240510402",
+      "name": "PAKRIYA BHATPURWA (Composite)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240511001",
+      "name": "PARSEHRA NATH (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240500702",
+      "name": "PARSEHRA SHAREEFPUR-2 (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-03",
+        "2026-10-06"
+      ]
+    },
+    {
+      "udise": "9240508001",
+      "name": "PARSEHRAMAL (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240503701",
+      "name": "PATTI KATESAR (PS)",
+      "reported": 3,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240507701",
+      "name": "PICHAURA (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-07"
+      ]
+    },
+    {
+      "udise": "9240505101",
+      "name": "PIPRA GHURI (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240511401",
+      "name": "POKHRA (Composite)",
+      "reported": 5,
+      "missedDays": [
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240506901",
+      "name": "POKHRA (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
       ]
     },
     {
       "udise": "9240507202",
       "name": "PUNNAPUR (PS)",
-      "reported": 0,
+      "reported": 1,
       "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05",
+        "2026-10-07",
         "2026-10-08"
+      ]
+    },
+    {
+      "udise": "9240509801",
+      "name": "RAHI (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240509802",
+      "name": "RAHI (UPS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240507902",
+      "name": "RAJEPUR (Composite)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
+      ]
+    },
+    {
+      "udise": "9240501002",
+      "name": "RAKSHA (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-09-30"
+      ]
+    },
+    {
+      "udise": "9240507803",
+      "name": "RASOOLPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240505104",
+      "name": "RIKHI PURWA (PS)",
+      "reported": 2,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-06",
+        "2026-10-07"
+      ]
+    },
+    {
+      "udise": "9240505801",
+      "name": "RUKNAPUR (PS)",
+      "reported": 2,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05",
+        "2026-10-06"
+      ]
+    },
+    {
+      "udise": "9240505703",
+      "name": "SADHUWAPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-07"
+      ]
+    },
+    {
+      "udise": "9240508702",
+      "name": "SAHANIYAPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240503002",
+      "name": "SAKLANPUR (Composite)",
+      "reported": 3,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240503101",
+      "name": "SARAIYAN RAH (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240510001",
+      "name": "SHEKHVAPUR (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240501501",
+      "name": "SIKANDARPUR (PS)",
+      "reported": 3,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03",
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240510601",
+      "name": "SRAIYAN PITTHU (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240510303",
+      "name": "TELLAPUR (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240507903",
+      "name": "UJAGAR PURWA (PS)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240508005",
+      "name": "ULAWALPUR (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01"
+      ]
+    },
+    {
+      "udise": "9240500901",
+      "name": "UMARIYA KALA (PS)",
+      "reported": 6,
+      "missedDays": [
+        "2026-10-06"
+      ]
+    },
+    {
+      "udise": "9240501401",
+      "name": "UMRI SALEMPUR (PS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-10-01",
+        "2026-10-05"
+      ]
+    },
+    {
+      "udise": "9240501402",
+      "name": "UMRI SALEMPUR (UPS)",
+      "reported": 5,
+      "missedDays": [
+        "2026-10-01",
+        "2026-10-03"
+      ]
+    },
+    {
+      "udise": "9240506602",
+      "name": "VAJEERPUR (Composite)",
+      "reported": 4,
+      "missedDays": [
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-03"
       ]
     }
   ]
