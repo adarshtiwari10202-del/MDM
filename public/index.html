@@ -113,7 +113,8 @@
   .attend:active{transform:translateY(1px)}
   .attend.ok{border-left-color:var(--teal)}
   .attend.warn{border-left-color:var(--gold,#e0a92e)}
-  .flagrow{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .flagrow{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:900px){ .flagrow{grid-template-columns:1fr 1fr} }
   .flagrow .attend{margin-bottom:16px}
   @media(max-width:640px){ .flagrow{grid-template-columns:1fr;gap:0} }
   .attend .big{font-family:"Archivo",sans-serif;font-weight:800;font-size:30px;color:var(--red);line-height:1}
@@ -232,10 +233,18 @@
   <div class="wrap">
    <div id="mainView">
     <div class="flagrow" id="flagRow" style="display:none">
+      <div class="attend flag" id="flagQuality2" role="button" tabindex="0">
+        <div class="big" id="fq2Num">—</div>
+        <div class="txt">
+          <div class="lbl">Meal-quality (2 days running)</div>
+          <div class="hint" id="fq2Hint"></div>
+        </div>
+        <div class="cta">View list ›</div>
+      </div>
       <div class="attend flag" id="flagQuality" role="button" tabindex="0">
         <div class="big" id="fqNum">—</div>
         <div class="txt">
-          <div class="lbl">Meal-quality flags</div>
+          <div class="lbl">Meal-quality (3 days running)</div>
           <div class="hint" id="fqHint"></div>
         </div>
         <div class="cta">View list ›</div>
@@ -326,7 +335,8 @@
         <button class="x" id="fmClose" aria-label="Close">×</button>
       </div>
       <div class="modal-tools" id="fmTabs">
-        <button data-t="red" class="active">Red 3 days running</button>
+        <button data-t="red2" class="active">Red 2 days running</button>
+        <button data-t="red">Red 3 days running</button>
         <button data-t="nosubmit">Missed a day (last 3)</button>
       </div>
       <div class="modal-dlrow">
@@ -965,14 +975,16 @@ async function exportRosterExcel(){
 
 // ============================================================
 // School-level, multi-day flags (computed over ALL data, not one date)
-//   • RED STREAK  — a red flag on RED_STREAK_DAYS consecutive reporting days
-//   • MISSED DAY  — missed reporting on ANY of the last RECENT_DAYS reporting
-//                   days (flagged even if only a single day was missed)
+//   • RED STREAK 3  — a red flag on the last 3 consecutive reporting days
+//   • RED STREAK 2  — a red flag on the last 2 consecutive reporting days
+//                    (every 3-day streak is also a 2-day streak)
+//   • MISSED DAY    — missed reporting on ANY of the last RECENT_DAYS reporting
+//                    days (flagged even if only a single day was missed)
 // "Reporting days" = the distinct dates the block actually reported on, minus
 // declared holidays (HOLIDAYS) and today until 7 PM IST, so Sundays/holidays and
 // an in-progress day don't count as gaps.
 // ============================================================
-const RED_STREAK_DAYS=3, RECENT_DAYS=3;
+const RED_STREAK_DAYS=3, RED_STREAK_SHORT=2, RECENT_DAYS=3;
 
 // Days the block was NOT expected to report (holidays). These never count as a
 // reporting day, so no school is flagged for "missing" them. Add dates here.
@@ -1011,15 +1023,22 @@ function schoolFlags(){
     if(r.severity==='red'){ (redBy.get(u)||redBy.set(u,new Set()).get(u)).add(r.date); }
   });
   const flagged=new Map();
-  const ensure=(u)=>{ if(!flagged.has(u)) flagged.set(u,{udise:u,name:nameFor(u),redStreak:null,missedRecent:false,missedDays:[]}); return flagged.get(u); };
-  // Rule A: red on the LAST RED_STREAK_DAYS consecutive reporting days.
-  // This is a rolling window — its end is the newest reporting day, so a
-  // school clears the flag once it posts a non-red day, and only schools red
-  // *right now* (for the streak length) are listed.
+  const ensure=(u)=>{ if(!flagged.has(u)) flagged.set(u,{udise:u,name:nameFor(u),redStreak:null,red2Streak:null,missedRecent:false,missedDays:[]}); return flagged.get(u); };
+  // Rule A: red on the LAST N consecutive reporting days — rolling windows
+  // anchored to the newest reporting day. A school clears once it posts a
+  // non-red day, so only schools red *right now* are listed. We compute both
+  // the strict 3-day streak and the softer 2-day streak (every 3-day hit is
+  // also a 2-day hit; the 2-day tile surfaces emerging patterns earlier).
   const redWindow = days.slice(-RED_STREAK_DAYS);
   if(redWindow.length===RED_STREAK_DAYS){
     for(const [u,set] of redBy){
       if(redWindow.every(d=>set.has(d))) ensure(u).redStreak=redWindow.slice();
+    }
+  }
+  const red2Window = days.slice(-RED_STREAK_SHORT);
+  if(red2Window.length===RED_STREAK_SHORT){
+    for(const [u,set] of redBy){
+      if(red2Window.every(d=>set.has(d))) ensure(u).red2Streak=red2Window.slice();
     }
   }
   // Rule B: missed reporting on ANY of the last RECENT_DAYS reporting days
@@ -1033,17 +1052,26 @@ function schoolFlags(){
       if(missed.length){ const e=ensure(u); e.missedRecent=true; e.missedDays=missed; }
     }
   }
-  return { flagged:[...flagged.values()], days, last3 };
+  return { flagged:[...flagged.values()], days, last3, last2:red2Window };
 }
 
 function renderFlagged(){
   const row=document.getElementById('flagRow');
-  const { flagged, days, last3 }=schoolFlags();
+  const { flagged, days, last3, last2 }=schoolFlags();
   if(!days.length){ row.style.display='none'; return; } // no data yet
   row.style.display='grid';
   const win = last3&&last3.length ? last3.length : RECENT_DAYS;
   const span = last3&&last3.length ? `${fmtShort(last3[0])}–${fmtShort(last3[last3.length-1])}` : '';
-  // --- Tile 1: meal-quality (red on the last streak) ---
+  const span2 = last2&&last2.length===RED_STREAK_SHORT ? `${fmtShort(last2[0])}–${fmtShort(last2[last2.length-1])}` : '';
+  // --- Tile 1: meal-quality 2-day streak (softer, earlier signal) ---
+  const reds2=flagged.filter(f=>f.red2Streak).length;
+  const q2El=document.getElementById('flagQuality2');
+  q2El.classList.toggle('ok', reds2===0);
+  document.getElementById('fq2Num').textContent=reds2;
+  document.getElementById('fq2Hint').textContent = reds2===0
+    ? `No school red on the last ${RED_STREAK_SHORT} reporting days running`
+    : `Red flags on the last ${RED_STREAK_SHORT} reporting days${span2?` (${span2})`:''} · click for the list`;
+  // --- Tile 2: meal-quality 3-day streak (strict) ---
   const reds=flagged.filter(f=>f.redStreak).length;
   const qEl=document.getElementById('flagQuality');
   qEl.classList.toggle('ok', reds===0);
@@ -1062,8 +1090,8 @@ function renderFlagged(){
 }
 
 // ---- flagged-schools modal ----
-let FM_TAB='red';
-function openFlag(tab){ FM_TAB=(tab==='nosubmit'||tab==='red')?tab:'red'; document.getElementById('fmSearch').value='';
+let FM_TAB='red2';
+function openFlag(tab){ FM_TAB=(tab==='nosubmit'||tab==='red'||tab==='red2')?tab:'red2'; document.getElementById('fmSearch').value='';
   document.querySelectorAll('#fmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t===FM_TAB));
   renderFlagModal(); document.getElementById('flagModal').classList.add('show'); }
 function closeFlag(){ document.getElementById('flagModal').classList.remove('show'); }
@@ -1074,8 +1102,10 @@ function currentFlagList(){
   const q=(document.getElementById('fmSearch').value||'').trim().toLowerCase();
   let list=flagged.slice();
   if(FM_TAB==='red') list=list.filter(f=>f.redStreak);
+  else if(FM_TAB==='red2') list=list.filter(f=>f.red2Streak);
   else if(FM_TAB==='nosubmit') list=list.filter(f=>f.missedRecent);
-  list.sort((a,b)=> (b.redStreak?1:0)-(a.redStreak?1:0) || a.name.localeCompare(b.name));
+  // 3-day streaks (strictest) come first, then 2-day-only, then alphabetical.
+  list.sort((a,b)=> (b.redStreak?1:0)-(a.redStreak?1:0) || (b.red2Streak?1:0)-(a.red2Streak?1:0) || a.name.localeCompare(b.name));
   if(q) list=list.filter(f=>f.name.toLowerCase().includes(q)||String(f.udise).includes(q));
   return list;
 }
@@ -1083,22 +1113,27 @@ function currentFlagList(){
 function flagReason(f){
   const parts=[];
   if(f.redStreak) parts.push(`Red flags on ${f.redStreak.length} reporting days running (${fmtShort(f.redStreak[0])}–${fmtShort(f.redStreak[f.redStreak.length-1])})`);
+  else if(f.red2Streak) parts.push(`Red flags on ${f.red2Streak.length} reporting days running (${fmtShort(f.red2Streak[0])}–${fmtShort(f.red2Streak[f.red2Streak.length-1])})`);
   if(f.missedRecent) parts.push(`Missed reporting on ${f.missedDays.length} of last ${RECENT_DAYS} days (${(f.missedDays||[]).map(fmtShort).join(', ')})`);
   return parts.join(' ; ');
 }
 function renderFlagModal(){
   const { flagged, days, last3 }=schoolFlags();
   const reds=flagged.filter(f=>f.redStreak).length;
+  const reds2=flagged.filter(f=>f.red2Streak).length;
   const nos=flagged.filter(f=>f.missedRecent).length;
   const span = last3&&last3.length ? ` (${fmtShort(last3[0])}–${fmtShort(last3[last3.length-1])})` : '';
   document.getElementById('fmSub').textContent =
-    `${reds} meal-quality (red ${RED_STREAK_DAYS} days running) · ${nos} reporting gaps${span} · ${days.length} reporting days on record`;
+    `${reds2} meal-quality (red ${RED_STREAK_SHORT} days) · ${reds} meal-quality (red ${RED_STREAK_DAYS} days) · ${nos} reporting gaps${span} · ${days.length} reporting days on record`;
   const list=currentFlagList();
   const el=document.getElementById('fmList');
   if(!list.length){ el.innerHTML=`<div class="slrow"><span class="ud">No schools match.</span></div>`; return; }
   el.innerHTML=list.map((f,i)=>{
     const badges=[];
+    // Show the strictest red badge that applies (3-day beats 2-day), so a
+    // 3-day streak school isn't double-badged in the 2-day list.
     if(f.redStreak) badges.push(`<span class="badge no">Red ${f.redStreak.length} days (${fmtShort(f.redStreak[0])}–${fmtShort(f.redStreak[f.redStreak.length-1])})</span>`);
+    else if(f.red2Streak) badges.push(`<span class="badge no">Red ${f.red2Streak.length} days (${fmtShort(f.red2Streak[0])}–${fmtShort(f.red2Streak[f.red2Streak.length-1])})</span>`);
     if(f.missedRecent){ const md=(f.missedDays||[]).map(fmtShort).join(', ');
       badges.push(`<span class="badge warn">Missed ${f.missedDays.length} of last ${RECENT_DAYS}${md?`: ${md}`:''}</span>`); }
     return `<div class="slrow" data-profile="${f.udise}" role="button" tabindex="0"><div><div class="nm"><span class="sn">${i+1}.</span> ${f.name}</div><div class="ud">UDISE ${f.udise}</div></div>
@@ -1129,7 +1164,7 @@ function flagExportRows(){
 }
 function flagExportName(ext){
   const { last3 }=schoolFlags();
-  const tag = FM_TAB==='red' ? 'MealQuality_RedStreak' : 'NonReporting';
+  const tag = FM_TAB==='red' ? `MealQuality_Red${RED_STREAK_DAYS}Days` : FM_TAB==='red2' ? `MealQuality_Red${RED_STREAK_SHORT}Days` : 'NonReporting';
   const span = last3&&last3.length ? `${last3[0]}_to_${last3[last3.length-1]}` : 'latest';
   return `MDM_${tag}_Hargaon_${span}.${ext}`;
 }
@@ -1154,7 +1189,7 @@ async function exportFlagExcel(){
     const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
     ws['!cols']=[{wch:6},{wch:16},{wch:40},{wch:52}];
     const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, FM_TAB==='red'?'Meal quality':'Non-reporting');
+    XLSX.utils.book_append_sheet(wb, ws, FM_TAB==='red'?'Meal quality (3d)':FM_TAB==='red2'?'Meal quality (2d)':'Non-reporting');
     XLSX.writeFile(wb, flagExportName('xlsx'));
   }catch(e){
     downloadFlagCSV(); // CDN unavailable → CSV (opens in Excel)
@@ -1367,6 +1402,7 @@ function renderProfile(){
   // ---- top summary: why this school is prioritised ----
   let sev='ok', headline='', desc='', issues='', problem='';
   const streak = entry && entry.redStreak;
+  const streak2 = entry && !entry.redStreak && entry.red2Streak;   // 2-day streak that isn't already a 3-day streak
   if(streak){
     sev='red';
     headline=`Flagged: red flags on ${streak.length} consecutive reporting days (${fmtShort(streak[0])} – ${fmtShort(streak[streak.length-1])}).`;
@@ -1375,6 +1411,15 @@ function renderProfile(){
     issues=issuesHtml(byCode, streak.length);
     const top=[...byCode.entries()].sort((a,b)=>b[1].days.size-a[1].days.size)[0];
     if(top) problem=`Core problem: ${flagLabel(top[0])} — recurring on ${top[1].days.size} of the ${streak.length} flagged days.`;
+    if(entry.missedRecent) desc+=` It also missed reporting on ${entry.missedDays.length} of the last ${RECENT_DAYS} reporting days (${entry.missedDays.map(fmtShort).join(', ')}).`;
+  } else if(streak2){
+    sev='red';
+    headline=`Flagged: red flags on the last ${streak2.length} consecutive reporting days (${fmtShort(streak2[0])} – ${fmtShort(streak2[streak2.length-1])}).`;
+    desc=`An emerging pattern — the school was red on both of the last ${streak2.length} reporting days. Here is what those days were flagged for:`;
+    const byCode=flagsAcross(udise, streak2);
+    issues=issuesHtml(byCode, streak2.length);
+    const top=[...byCode.entries()].sort((a,b)=>b[1].days.size-a[1].days.size)[0];
+    if(top) problem=`Core problem: ${flagLabel(top[0])} — on ${top[1].days.size} of the ${streak2.length} flagged days.`;
     if(entry.missedRecent) desc+=` It also missed reporting on ${entry.missedDays.length} of the last ${RECENT_DAYS} reporting days (${entry.missedDays.map(fmtShort).join(', ')}).`;
   } else if(entry && entry.missedRecent){
     sev='warn';
@@ -1467,6 +1512,9 @@ document.getElementById('rmSearch').addEventListener('input',renderRosterModal);
 document.getElementById('rmExport').addEventListener('click',exportRosterExcel);
 
 // flagged-schools tiles → open the modal on the matching tab
+const fq2El=document.getElementById('flagQuality2');
+fq2El.addEventListener('click',()=>openFlag('red2'));
+fq2El.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openFlag('red2'); }});
 const fqEl=document.getElementById('flagQuality');
 fqEl.addEventListener('click',()=>openFlag('red'));
 fqEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openFlag('red'); }});
