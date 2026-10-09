@@ -39,7 +39,8 @@
   .tp-body{flex:1;min-width:0}
   .tp-name{font-weight:700;font-size:13.5px;color:var(--ink)}
   .tp-udise{color:var(--grey);font-size:11.5px;margin-top:1px}
-  .tp-diff{margin-top:6px;font-size:12.5px;line-height:1.45}
+  .tp-reason{margin-top:6px;font-size:13px;line-height:1.5;color:var(--ink);background:#fff8f6;border-left:3px solid var(--red);padding:7px 10px;border-radius:0 6px 6px 0}
+  .tp-diff{margin-top:6px;font-size:12px;line-height:1.4;color:var(--grey)}
   .tp-diff .k{color:#2A2E36;font-weight:600}
   .tp-diff .v{color:var(--red);font-weight:600}
   .tp-diff .m{color:var(--grey)}
@@ -1568,6 +1569,29 @@ const TEST_DATE = '2026-10-08';
 const DISH_LABEL={ dal_color:'color', dal_consistency:'consistency', dal_oil_film:'oil film', dal_vegetables_visible:'vegetables', dal_fill_level:'fill level',
   sabzi_base:'base', sabzi_color:'color', sabzi_oil_film:'oil film', sabzi_type:'type', sabzi_fill_level:'fill level' };
 const prettyVal=(v)=>String(v||'').replace(/_/g,' ');
+// Natural-language phrases per attribute/value so each outlier gets a readable
+// one-sentence reason, not just a raw diff list.
+const PHRASE={
+  dal_color:{yellow:'a standard yellow colour',dark_yellow:'a dark-yellow colour',brown:'a brown colour',off:'an off colour'},
+  dal_consistency:{watery:'watery consistency',medium:'medium consistency',thick:'thick consistency'},
+  dal_oil_film:{yes:'a visible oil film on top',no:'no visible oil film'},
+  dal_vegetables_visible:{yes:'vegetables mixed in',no:'no vegetables (plain lentils)'},
+  dal_fill_level:{sparse:'a sparse fill (vessel nearly empty)',adequate:'an adequate fill',generous:'a generous fill (vessel nearly full)'},
+  sabzi_base:{potato:'a potato base',mixed:'a mixed-vegetable base',soya_badi:'a soya-badi base',leafy:'a leafy base',other:'a different base'},
+  sabzi_color:{rich:'a rich colour',pale:'a pale colour',dark:'a dark colour'},
+  sabzi_oil_film:{yes:'a visible oil film',no:'no visible oil'},
+  sabzi_type:{dry:'a dry preparation',gravy:'a gravy preparation'},
+  sabzi_fill_level:{sparse:'a sparse fill (vessel nearly empty)',adequate:'an adequate fill',generous:'a generous fill (vessel nearly full)'},
+};
+const phraseFor=(attr,val)=> (PHRASE[attr]&&PHRASE[attr][val]) || prettyVal(val);
+const joinList=(xs)=> xs.length<=1 ? (xs[0]||'') : xs.length===2 ? xs.join(' and ') : xs.slice(0,-1).join(', ') + ', and ' + xs[xs.length-1];
+function diffSentence(dishLabel, differs){
+  if(!differs || !differs.length) return '';
+  const subject = /dal/i.test(dishLabel) ? "This school's dal has" : "This school's sabzi has";
+  const have = differs.map(d=>phraseFor(d.attr, d.value));
+  const norm = differs.map(d=>phraseFor(d.attr, d.majority));
+  return `${subject} ${joinList(have)}, while most schools in the block today have ${joinList(norm)}.`;
+}
 async function openTestModal(){
   const sub=document.getElementById('tpSub');
   const dEl=document.getElementById('tpDate'); if(dEl) dEl.textContent=fmtDate(TEST_DATE);
@@ -1588,6 +1612,7 @@ async function openTestModal(){
     }
     if(!ds.outliers || !ds.outliers.length){ parts.push(`<div class="tp-row"><span class="tp-udise">${ds.note || 'No outliers to surface.'}</span></div>`); continue; }
     for(const o of ds.outliers.slice(0,5)){
+      const sentence = diffSentence(ds.dish, o.differs);
       const diffs=(o.differs||[]).map(d=>`<span class="k">${DISH_LABEL[d.attr]||d.attr}:</span> <span class="v">${prettyVal(d.value)}</span> <span class="m">vs block norm ${prettyVal(d.majority)}</span>`).join(' · ');
       const img=o.fileId?`<img loading="lazy" src="/api/media?id=${encodeURIComponent(o.fileId)}" alt="">`:'photo';
       parts.push(`<div class="tp-row tp-click" data-profile="${o.udise}" role="button" tabindex="0" title="Open this school's historical profile">
@@ -1595,6 +1620,7 @@ async function openTestModal(){
         <div class="tp-body">
           <div class="tp-name">${o.name||o.udise} <span class="tp-chip">differs on ${o.divergence}</span><span class="tp-open">Open profile ›</span></div>
           <div class="tp-udise">UDISE ${o.udise}</div>
+          ${sentence?`<div class="tp-reason">${sentence}</div>`:''}
           <div class="tp-diff">${diffs}</div>
           ${o.notes?`<div class="tp-diff m" style="margin-top:4px">${o.notes}</div>`:''}
         </div>
