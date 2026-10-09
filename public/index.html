@@ -44,6 +44,10 @@
   .tp-diff .v{color:var(--red);font-weight:600}
   .tp-diff .m{color:var(--grey)}
   .tp-chip{display:inline-block;padding:1px 7px;border-radius:999px;background:#fdeded;color:var(--red);font-size:11px;font-weight:700;margin-left:6px}
+  .tp-click{cursor:pointer;transition:background .12s}
+  .tp-click:hover{background:#f4f8fd}
+  .tp-click:focus{outline:2px solid var(--navy);outline-offset:-2px}
+  .tp-open{float:right;font-size:11.5px;color:var(--navy);font-weight:700;white-space:nowrap}
   .tp-section{padding:14px 20px 4px;font-weight:800;color:var(--navy);font-size:14px;text-transform:uppercase;letter-spacing:.4px}
   .tp-maj{padding:0 20px 10px;color:var(--grey);font-size:12px}
   .tp-note{margin:14px 20px 0;padding:10px 12px;background:#fff7e6;border:1px solid #e9d99a;border-radius:8px;color:#7a5b00;font-size:12.5px;line-height:1.5}
@@ -1514,7 +1518,7 @@ function renderProfile(){
 function openProfile(udise){
   if(!udise) return;
   PROFILE_UDISE=udise;
-  closeFlag(); closeRoster();
+  closeFlag(); closeRoster(); closeTestModal();
   renderProfile();
   document.getElementById('mainView').style.display='none';
   document.getElementById('profileView').style.display='block';
@@ -1586,10 +1590,10 @@ async function openTestModal(){
     for(const o of ds.outliers.slice(0,5)){
       const diffs=(o.differs||[]).map(d=>`<span class="k">${DISH_LABEL[d.attr]||d.attr}:</span> <span class="v">${prettyVal(d.value)}</span> <span class="m">vs block norm ${prettyVal(d.majority)}</span>`).join(' · ');
       const img=o.fileId?`<img loading="lazy" src="/api/media?id=${encodeURIComponent(o.fileId)}" alt="">`:'photo';
-      parts.push(`<div class="tp-row">
+      parts.push(`<div class="tp-row tp-click" data-profile="${o.udise}" role="button" tabindex="0" title="Open this school's historical profile">
         <div class="tp-thumb">${img}</div>
         <div class="tp-body">
-          <div class="tp-name">${o.name||o.udise} <span class="tp-chip">differs on ${o.divergence}</span></div>
+          <div class="tp-name">${o.name||o.udise} <span class="tp-chip">differs on ${o.divergence}</span><span class="tp-open">Open profile ›</span></div>
           <div class="tp-udise">UDISE ${o.udise}</div>
           <div class="tp-diff">${diffs}</div>
           ${o.notes?`<div class="tp-diff m" style="margin-top:4px">${o.notes}</div>`:''}
