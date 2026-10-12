@@ -7,11 +7,13 @@ import '../backend/config.js';
 import { readResults } from '../backend/store.js';
 
 const HOLIDAYS = new Set(['2026-10-02']);
+const isSunday = (d) => { try { return new Date(d + 'T12:00:00Z').getUTCDay() === 0; } catch (e) { return false; } };
+const isOff = (d) => isSunday(d) || HOLIDAYS.has(d);
 
 async function main() {
   const rows = await readResults();
   const days = [...new Set(rows.map(r => r.date).filter(Boolean))]
-    .filter(d => !HOLIDAYS.has(d))
+    .filter(d => !isOff(d))
     .sort();
   console.log(`[streak-sim] ${rows.length} rows · ${days.length} reporting days: ${days.join(', ')}`);
 
