@@ -7,6 +7,8 @@
 // Needs: GOOGLE_SERVICE_ACCOUNT_JSON, RESULTS_SHEET_ID.
 // ============================================================
 import { readResults } from '../backend/store.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const ITEMS = ['cooking', 'cooked_meal', 'serving_video', 'plate'];
 
@@ -53,6 +55,11 @@ async function main() {
 
   console.log('\nSample error per date (why AI is missing), if any:');
   for (const d of Object.keys(errSamples).sort()) console.log(`  ${d}: ${errSamples[d]}`);
+
+  const out = { generated_at: new Date().toISOString(), byDate, totals: T, errSamples };
+  const dir = path.join(process.cwd(), 'reports');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'ai_coverage.json'), JSON.stringify(out, null, 2));
 }
 
 main().catch((e) => { console.error('FAILED:', e); process.exit(1); });

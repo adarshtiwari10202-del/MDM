@@ -3,6 +3,9 @@ name: AI coverage report
 on:
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   coverage:
     runs-on: ubuntu-latest
@@ -19,3 +22,10 @@ jobs:
           RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
           RESULTS_SHEET_TAB: Results
         run: node scripts/ai-coverage.js
+      - name: Commit coverage JSON
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f reports/ai_coverage.json
+          git commit -m "data: ai_coverage.json snapshot [skip ci]" || echo "no changes"
+          git push origin HEAD:claude/mdm-monitoring-pipeline-xd3l9p
