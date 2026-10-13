@@ -16,6 +16,8 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm ci || npm install
+      - name: Install docx (for Word output)
+        run: npm install --no-save docx@8.5.0
       - name: Build chronic non-reporter lists
         env:
           DATA_MODE: live
