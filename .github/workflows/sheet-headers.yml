@@ -1,0 +1,32 @@
+name: Dump daily sheet headers
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Dump headers
+        env:
+          DATA_MODE: live
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
+          DAILY_SHEET_TAB: Form Responses 1
+        run: node scripts/sheet-headers.js
+      - name: Commit snapshot
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f reports/sheet_headers.json
+          git commit -m "data: sheet_headers.json snapshot [skip ci]" || echo "no changes"
+          git push origin HEAD:claude/mdm-monitoring-pipeline-xd3l9p
