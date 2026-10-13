@@ -123,9 +123,7 @@
   .chip.ok{background:#dcebe4;color:#3d6b57} .chip.info{background:#e3eaf3;color:var(--grey)}
   .chip.red30{background:#fbeadf;color:#8c3e18;border:1px solid #e6c3af}
   .chip.rmk{background:#eaf1fb;color:#1f3b66;border:1px solid #cfdbee;text-transform:none;letter-spacing:0;font-weight:600}
-  .scomment{margin:10px 0 2px;padding:9px 12px;background:#f6f8fc;border:1px solid var(--hair);border-left:3px solid var(--navy);border-radius:6px;display:flex;gap:10px;align-items:flex-start}
-  .scomment .scomment-l{font-size:11.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;padding-top:1px}
-  .scomment .scomment-t{font-size:13.5px;color:var(--ink);line-height:1.45;white-space:pre-wrap;word-break:break-word;flex:1 1 auto}
+  .scomment{margin:10px 0 2px;padding:9px 12px;background:#f6f8fc;border:1px solid var(--hair);border-left:3px solid var(--navy);border-radius:6px;font-size:13.5px;color:var(--ink);line-height:1.45;white-space:pre-wrap;word-break:break-word}
   .caret{color:var(--grey);font-size:12px;transition:transform .15s}
   .card.open .caret{transform:rotate(90deg)}
 
@@ -1481,7 +1479,7 @@ function commentPanel(udise, date){
   const c=commentFor(udise, date);
   if(!c) return '';
   const safe=String(c).replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  return `<div class="scomment" title="School-authored remark for this submission"><span class="scomment-l">💬 School remark</span><span class="scomment-t">${safe}</span></div>`;
+  return `<div class="scomment">${safe}</div>`;
 }
 
 // One full submission card (media + flags + AI reading).
