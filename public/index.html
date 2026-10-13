@@ -122,7 +122,6 @@
   .chip.red{background:#f7e2db;color:var(--red)} .chip.amber{background:#f4e7d6;color:#9c6a34}
   .chip.ok{background:#dcebe4;color:#3d6b57} .chip.info{background:#e3eaf3;color:var(--grey)}
   .chip.red30{background:#fbeadf;color:#8c3e18;border:1px solid #e6c3af}
-  .chip.rmk{background:#eaf1fb;color:#1f3b66;border:1px solid #cfdbee;text-transform:none;letter-spacing:0;font-weight:600}
   .scomment{margin:10px 0 2px;padding:9px 12px;background:#f6f8fc;border:1px solid var(--hair);border-left:3px solid var(--navy);border-radius:6px;font-size:13.5px;color:var(--ink);line-height:1.45;white-space:pre-wrap;word-break:break-word}
   .caret{color:var(--grey);font-size:12px;transition:transform .15s}
   .card.open .caret{transform:rotate(90deg)}
@@ -1517,16 +1516,11 @@ function queueRow(row){
   const red30Chip = red30>0
     ? `<span class="chip red30" title="Red flags on ${red30} of the last 30 reporting days (anchored at the selected date)">⚠ ${red30}/30 d red</span>`
     : '';
-  const c=commentFor(u, row.date);
-  const commentChip = c
-    ? `<span class="chip rmk" title="${String(c).replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}">💬 remark</span>`
-    : '';
   return `<div class="qrow sev-${sev==='info'?'ok':sev}" data-profile="${u}" role="button" tabindex="0">
     <div class="who">
       <div class="name">${row.school.name}</div>
       <div class="meta">UDISE ${row.school.udise} · ${fmtTime(row.submittedAt)} · menu: ${row.menuLabel || (Array.isArray(row.menu)?row.menu.join(', '):'')}</div>
     </div>
-    ${commentChip}
     ${red30Chip}
     ${severityChip(row)}
     <span class="cta">Open profile ›</span>
