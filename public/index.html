@@ -1046,17 +1046,30 @@ function isOff(d){ return isSunday(d) || HOLIDAYS.has(d); }
 // in-progress day isn't used in the streak / missed-day windows before schools
 // have had the full day to submit.
 const REPORT_CUTOFF_HOUR=19;
+// A day with fewer than this many distinct submissions is treated as a data
+// outage, not a real reporting day — so no school is penalised for "missing"
+// it. Set to ~15% of a typical day to catch collection outages (e.g. 10 Oct's
+// 6-row Saturday) while still accepting lightly-reported but real days.
+const MIN_REPORTING_SUBS=25;
 function istNow(){ return new Date(Date.now()+(5*60+30)*60000); }   // IST wall clock as a UTC-reading Date
 function istTodayISO(){ return istNow().toISOString().slice(0,10); }
 
 // "Reporting days" = distinct dates the block actually reported on, MINUS
-// holidays, and excluding today until 7 PM IST (an incomplete day).
+// Sundays and declared holidays, MINUS today until 7 PM IST (in-progress day),
+// MINUS days with fewer than MIN_REPORTING_SUBS submissions (outage days).
+// Submission counts come from live /api/submissions when present, else from
+// the processed Results rows (whichever is larger — a day in both uses the
+// live count, which is authoritative).
 function reportingDays(){
   const today=istTodayISO();
   const todayCounts = istNow().getUTCHours()>=REPORT_CUTOFF_HOUR;   // today counts only after 7 PM IST
+  const subsByDate=new Map();
+  for(const r of ROWS){ if(!r.date) continue; const u=(r.school&&r.school.udise||'').trim(); if(!u) continue; (subsByDate.get(r.date)||subsByDate.set(r.date,new Set()).get(r.date)).add(u); }
+  const subsCount=(d)=> Math.max((SUBS_BY_DATE[d]||[]).length, (subsByDate.get(d)||new Set()).size);
   return [...new Set(ROWS.map(r=>r.date).filter(Boolean))]
     .filter(d=>!isOff(d))
     .filter(d=>!(d===today && !todayCounts))
+    .filter(d=> subsCount(d) >= MIN_REPORTING_SUBS)
     .sort();
 }
 function fmtShort(d){ try{return new Date(d+'T12:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch(e){return d;} }
@@ -1703,7 +1716,9 @@ document.addEventListener('keydown',(e)=>{
 
 // Union of AI-processed dates (ROWS) and live-submission dates (SUB_DATES),
 // Sundays and declared holidays filtered out so a stray off-day submission
-// never shows up as a selectable reporting day. Newest first.
+// never shows up as a selectable reporting day. Newest first. (We DO keep
+// today here and days below MIN_REPORTING_SUBS, so the user can still inspect
+// what's trickled in on an in-progress or low-reporting day from the picker.)
 function allDates(){ return [...new Set([...ROWS.map(r=>r.date), ...SUB_DATES].filter(Boolean))].filter(d=>!isOff(d)).sort().reverse(); }
 function latestDate(){ return allDates()[0] || 'all'; }
 let AUTO_FOLLOW=true;  // true while the viewer is tracking the newest date (so it auto-advances at day rollover)
