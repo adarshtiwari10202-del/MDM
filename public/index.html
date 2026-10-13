@@ -121,6 +121,7 @@
   .chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.4px}
   .chip.red{background:#f7e2db;color:var(--red)} .chip.amber{background:#f4e7d6;color:#9c6a34}
   .chip.ok{background:#dcebe4;color:#3d6b57} .chip.info{background:#e3eaf3;color:var(--grey)}
+  .chip.red30{background:#fbeadf;color:#8c3e18;border:1px solid #e6c3af}
   .caret{color:var(--grey);font-size:12px;transition:transform .15s}
   .card.open .caret{transform:rotate(90deg)}
 
@@ -1488,31 +1489,75 @@ function cardHtml(row, open){
 }
 
 // Compact landing row — one per school for the date, click opens the profile.
+// For red-flagged rows we also show how many of the last 30 reporting days
+// the school was red: a chronic offender surfaces at a glance.
 function queueRow(row){
   const sev = row.severity;
   const u=(row.school&&row.school.udise||'').trim();
+  const red30 = sev==='red' ? red30For(u) : 0;
+  const red30Chip = red30>0
+    ? `<span class="chip red30" title="Red flags on ${red30} of the last 30 reporting days (anchored at the selected date)">⚠ ${red30}/30 d red</span>`
+    : '';
   return `<div class="qrow sev-${sev==='info'?'ok':sev}" data-profile="${u}" role="button" tabindex="0">
     <div class="who">
       <div class="name">${row.school.name}</div>
       <div class="meta">UDISE ${row.school.udise} · ${fmtTime(row.submittedAt)} · menu: ${row.menuLabel || (Array.isArray(row.menu)?row.menu.join(', '):'')}</div>
     </div>
+    ${red30Chip}
     ${severityChip(row)}
     <span class="cta">Open profile ›</span>
   </div>`;
 }
 
+// How many of the LAST 30 reporting days did each school land a red flag on,
+// anchored at the currently selected date (inclusive) — or at the newest
+// reporting day when "All dates" is active. Used as a tiebreaker when
+// ranking flagged schools for a given day: within the same severity score,
+// chronic offenders sort above one-off offenders.
+function redDays30ByUdise(){
+  const rd=reportingDays();   // oldest → newest
+  if(!rd.length) return new Map();
+  const anchorIdx = SELECTED_DATE && SELECTED_DATE!=='all' && rd.includes(SELECTED_DATE)
+    ? rd.indexOf(SELECTED_DATE)
+    : rd.length-1;
+  const window=new Set(rd.slice(Math.max(0, anchorIdx-29), anchorIdx+1));
+  const by=new Map();
+  for(const r of ROWS){
+    if(r.severity!=='red') continue;
+    if(!window.has(r.date)) continue;
+    const u=(r.school&&r.school.udise||'').trim(); if(!u) continue;
+    (by.get(u)||by.set(u,new Set()).get(u)).add(r.date);
+  }
+  // Return udise -> count for easy sorting.
+  const out=new Map();
+  for(const [u,set] of by) out.set(u, set.size);
+  return out;
+}
+let RED30=new Map();                  // populated on each render()
+const red30For=(u)=> RED30.get(String(u||'').trim()) || 0;
+
 function render(){
   renderKpis();
   renderFlagged();
   renderAttendance();
+  RED30 = redDays30ByUdise();
   const q=document.getElementById('queue');
   let list=dateRows().filter(passFilter);
-  // One row per school (worst submission wins if a school uploaded twice), worst first.
+  // One row per school (worst submission wins if a school uploaded twice).
   const bySchool=new Map();
   list.forEach(r=>{ const u=(r.school&&r.school.udise||'').trim()||r.id;
     const prev=bySchool.get(u); if(!prev||(r.score||0)>(prev.score||0)) bySchool.set(u,r); });
-  list=[...bySchool.values()].sort((a,b)=>(b.score||0)-(a.score||0) ||
-    String(a.school&&a.school.name||'').localeCompare(String(b.school&&b.school.name||'')));
+  // Sort: (1) worst severity first, (2) within the same severity, chronic
+  // offenders (more red days in the last 30 reporting days) rank higher,
+  // (3) alphabetical tiebreak. Schools with severity 'ok' naturally fall to
+  // the bottom via (1); within them (2) does nothing because they have no
+  // red history unlocked by the clean-day priority.
+  list=[...bySchool.values()].sort((a,b)=>{
+    const sv=(b.score||0)-(a.score||0); if(sv) return sv;
+    const ac=red30For(a.school&&a.school.udise), bc=red30For(b.school&&b.school.udise);
+    if(bc!==ac) return bc-ac;
+    return String(a.school&&a.school.name||'').localeCompare(String(b.school&&b.school.name||''));
+  });
   if(!list.length){ q.innerHTML=`<div class="qrow" style="cursor:default"><div class="who"><div class="name" style="color:var(--grey)">Nothing here</div><div class="meta">No submissions match this filter.</div></div></div>`; return; }
   q.innerHTML=list.map(queueRow).join('');
 }
