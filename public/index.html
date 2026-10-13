@@ -76,9 +76,30 @@
   .kpi .n.yel{color:var(--navy);border-left:4px solid var(--yel);padding-left:8px;margin-left:-2px}
   .kpi .n.red{color:var(--red)} .kpi .n.amber{color:var(--amber)} .kpi .n.teal{color:var(--teal)}
 
-  .datebar{display:flex;align-items:center;gap:10px;margin:2px 0 16px;flex-wrap:wrap}
+  .datebar{display:flex;align-items:center;gap:10px;margin:2px 0 16px;flex-wrap:wrap;position:relative}
   .datebar label{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);font-weight:700}
-  .datebar select{font:inherit;font-size:14px;padding:7px 12px;border:1px solid var(--hair);border-radius:8px;background:#fff;color:var(--ink)}
+  .datebar .datepick{font:inherit;font-size:14px;padding:7px 12px;border:1px solid var(--hair);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-width:170px;justify-content:space-between}
+  .datebar .datepick:hover{border-color:var(--navy)}
+  .datebar .datepick .caret{color:var(--grey);font-size:11px}
+  .datebar .datealt{font:inherit;font-size:12.5px;padding:6px 10px;border:1px dashed var(--hair);border-radius:8px;background:transparent;color:var(--grey);cursor:pointer}
+  .datebar .datealt.on{background:var(--navy);color:#fff;border-color:var(--navy);border-style:solid}
+  .calpop{position:absolute;top:46px;left:62px;z-index:40;background:#fff;border:1px solid var(--hair);border-radius:10px;
+    box-shadow:0 10px 28px rgba(16,24,40,.14);padding:12px;width:272px}
+  .calpop-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .calpop-head .caltitle{font-weight:700;font-size:14px;color:var(--ink)}
+  .calpop-head .calnav{background:transparent;border:1px solid var(--hair);border-radius:6px;width:28px;height:28px;cursor:pointer;color:var(--ink);font-size:16px;line-height:1}
+  .calpop-head .calnav:disabled{opacity:.35;cursor:default}
+  .caldow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:10.5px;text-transform:uppercase;color:var(--grey);font-weight:700;text-align:center;margin-bottom:4px}
+  .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .calgrid .cday{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:13px;color:#ccc;border-radius:6px}
+  .calgrid .cday.has{color:var(--ink);background:#f3f6fb;cursor:pointer;font-weight:600}
+  .calgrid .cday.has:hover{background:var(--navy);color:#fff}
+  .calgrid .cday.off{color:#d9d9d9;background:transparent;cursor:not-allowed}
+  .calgrid .cday.sel{background:var(--navy);color:#fff}
+  .calgrid .cday.today{outline:2px solid var(--teal,#1a7f6b);outline-offset:-2px}
+  .calpop-foot{display:flex;justify-content:space-between;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--hair)}
+  .calpop-foot button{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--hair);background:#fff;color:var(--ink);border-radius:6px;cursor:pointer}
+  .calpop-foot button:hover{border-color:var(--navy);color:var(--navy)}
   .datesum{color:var(--grey);font-size:13px}
   .section-h{display:flex;align-items:center;justify-content:space-between;margin:6px 0 12px}
   .section-h h2{font-size:15px;margin:0;text-transform:uppercase;letter-spacing:.6px;color:var(--grey)}
@@ -281,8 +302,25 @@
     </div>
 
     <div class="datebar">
-      <label for="dateSel">Date</label>
-      <select id="dateSel"></select>
+      <label for="dateBtn">Date</label>
+      <button type="button" class="datepick" id="dateBtn" aria-haspopup="dialog" aria-expanded="false">
+        <span id="dateBtnText">—</span>
+        <span class="caret">▾</span>
+      </button>
+      <button type="button" class="datealt" id="dateAll" aria-pressed="false" title="Show data pooled across every reporting day">All dates</button>
+      <div class="calpop" id="calPop" role="dialog" aria-label="Pick a reporting date" hidden>
+        <div class="calpop-head">
+          <button class="calnav" type="button" id="calPrev" aria-label="Previous month">‹</button>
+          <div class="caltitle" id="calTitle">—</div>
+          <button class="calnav" type="button" id="calNext" aria-label="Next month">›</button>
+        </div>
+        <div class="caldow"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+        <div class="calgrid" id="calGrid"></div>
+        <div class="calpop-foot">
+          <button type="button" id="calToday">Jump to latest</button>
+          <button type="button" id="calClose">Close</button>
+        </div>
+      </div>
       <span id="dateSummary" class="datesum"></span>
     </div>
 
@@ -1802,24 +1840,100 @@ document.addEventListener('keydown',(e)=>{
 function allDates(){ return [...new Set([...ROWS.map(r=>r.date), ...SUB_DATES].filter(Boolean))].filter(d=>!isOff(d)).sort().reverse(); }
 function latestDate(){ return allDates()[0] || 'all'; }
 let AUTO_FOLLOW=true;  // true while the viewer is tracking the newest date (so it auto-advances at day rollover)
+// --- calendar date picker ---
+// Replaces the old <select>. A small popup shows one month at a time;
+// only days present in allDates() are clickable, so the user never lands
+// on a Sunday, holiday or outage day. Prev/Next navigate months, bounded
+// by the first and last available reporting day.
+let CAL_YEAR=null, CAL_MONTH=null;   // month currently rendered in the popup (0-indexed month)
 function rebuildDateOptions(){
-  const dates=allDates();
-  const sel=document.getElementById('dateSel');
-  sel.innerHTML = dates.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('')
-    + `<option value="all">All dates</option>`;
-  sel.value=SELECTED_DATE;
+  // Called when the available dates may have changed (e.g. a new submission
+  // ticked a new reporting day into view). Refreshes the button label and,
+  // if the calendar popup is open, re-renders its grid.
+  renderDateBtn();
+  const pop=document.getElementById('calPop'); if(pop && !pop.hidden) renderCal();
+}
+function renderDateBtn(){
+  const txt=document.getElementById('dateBtnText');
+  if(!txt) return;
+  txt.textContent = SELECTED_DATE==='all' ? 'All dates' : (SELECTED_DATE ? fmtDate(SELECTED_DATE) : '—');
+  const allBtn=document.getElementById('dateAll');
+  if(allBtn){ const on = SELECTED_DATE==='all'; allBtn.classList.toggle('on', on); allBtn.setAttribute('aria-pressed', on?'true':'false'); }
+}
+function pickDate(d){
+  if(!d) return;
+  SELECTED_DATE=d;
+  AUTO_FOLLOW = (d===latestDate());
+  renderDateBtn(); updateDateline(); render(); closeCal();
+}
+function openCal(){
+  const pop=document.getElementById('calPop'); if(!pop) return;
+  const dates=allDates(); if(!dates.length) return;
+  const anchor = SELECTED_DATE && SELECTED_DATE!=='all' ? SELECTED_DATE : dates[0];
+  const [ay, am] = anchor.split('-').map(Number);
+  CAL_YEAR=ay; CAL_MONTH=am-1;
+  pop.hidden=false;
+  document.getElementById('dateBtn').setAttribute('aria-expanded','true');
+  renderCal();
+}
+function closeCal(){
+  const pop=document.getElementById('calPop'); if(!pop) return;
+  pop.hidden=true;
+  const btn=document.getElementById('dateBtn'); if(btn) btn.setAttribute('aria-expanded','false');
+}
+function renderCal(){
+  const dates=allDates();                     // reporting days (newest first)
+  const have=new Set(dates);
+  const minDate = dates[dates.length-1];      // oldest reporting day
+  const maxDate = dates[0];                   // newest reporting day
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('calTitle').textContent = `${MONTHS[CAL_MONTH]} ${CAL_YEAR}`;
+  const first = new Date(Date.UTC(CAL_YEAR, CAL_MONTH, 1));
+  const startDow = first.getUTCDay();                           // 0=Sun
+  const daysInMonth = new Date(Date.UTC(CAL_YEAR, CAL_MONTH+1, 0)).getUTCDate();
+  const today = istTodayISO();
+  const cells=[];
+  for(let i=0;i<startDow;i++) cells.push(`<span class="cday"></span>`);
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = `${CAL_YEAR}-${String(CAL_MONTH+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const classes=['cday'];
+    if(have.has(iso)) classes.push('has');
+    else if(isOff(iso)) classes.push('off');
+    if(iso===SELECTED_DATE) classes.push('sel');
+    if(iso===today) classes.push('today');
+    cells.push(`<span class="${classes.join(' ')}" data-iso="${iso}" role="button" tabindex="${have.has(iso)?0:-1}">${d}</span>`);
+  }
+  document.getElementById('calGrid').innerHTML = cells.join('');
+  // Clamp nav to the window of available data (don't let the user wander off into empty months).
+  const [minY, minM] = minDate.split('-').slice(0,2).map(Number);
+  const [maxY, maxM] = maxDate.split('-').slice(0,2).map(Number);
+  const atMin = (CAL_YEAR<minY) || (CAL_YEAR===minY && CAL_MONTH+1<=minM);
+  const atMax = (CAL_YEAR>maxY) || (CAL_YEAR===maxY && CAL_MONTH+1>=maxM);
+  document.getElementById('calPrev').disabled = atMin;
+  document.getElementById('calNext').disabled = atMax;
 }
 function populateDates(){
-  // today appears — and becomes the default — even before the evening AI run.
   SELECTED_DATE = latestDate();
   AUTO_FOLLOW = true;
-  rebuildDateOptions();
-  const sel=document.getElementById('dateSel');
-  sel.addEventListener('change',()=>{
-    SELECTED_DATE=sel.value;
-    AUTO_FOLLOW = (sel.value===latestDate());   // following "today" only if the newest date is picked
-    updateDateline(); render();
+  renderDateBtn();
+  const btn=document.getElementById('dateBtn');
+  btn.addEventListener('click',(e)=>{ e.stopPropagation(); if(document.getElementById('calPop').hidden) openCal(); else closeCal(); });
+  document.getElementById('dateAll').addEventListener('click',()=>{
+    SELECTED_DATE='all'; AUTO_FOLLOW=false; renderDateBtn(); updateDateline(); render(); closeCal();
   });
+  document.getElementById('calPrev').addEventListener('click',()=>{ CAL_MONTH--; if(CAL_MONTH<0){ CAL_MONTH=11; CAL_YEAR--; } renderCal(); });
+  document.getElementById('calNext').addEventListener('click',()=>{ CAL_MONTH++; if(CAL_MONTH>11){ CAL_MONTH=0; CAL_YEAR++; } renderCal(); });
+  document.getElementById('calToday').addEventListener('click',()=>pickDate(latestDate()));
+  document.getElementById('calClose').addEventListener('click',closeCal);
+  document.getElementById('calGrid').addEventListener('click',(e)=>{
+    const c=e.target.closest('.cday.has'); if(c) pickDate(c.dataset.iso);
+  });
+  // Click outside closes.
+  document.addEventListener('click',(e)=>{
+    const pop=document.getElementById('calPop'); if(!pop || pop.hidden) return;
+    if(!pop.contains(e.target) && e.target.id!=='dateBtn' && !document.getElementById('dateBtn').contains(e.target)) closeCal();
+  });
+  document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeCal(); });
 }
 function updateDateline(){
   const el=document.getElementById('dateline');
