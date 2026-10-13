@@ -167,6 +167,10 @@
   .modal-tools button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
   .modal-search{margin:12px 20px 0;border:1px solid var(--hair);border-radius:8px;
     padding:8px 11px;font:inherit;font-size:13px}
+  .nrctrl{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:10px 20px 0;font-size:12.5px;color:var(--grey)}
+  .nrctrl select,.nrctrl input{font:inherit;font-size:12.5px;border:1px solid var(--hair);border-radius:6px;padding:4px 7px;background:#fff;color:var(--ink,#111)}
+  .nrctrl input[type=number]{width:58px;text-align:center}
+  .nrctrl .nrctrl-l{color:var(--grey)}
   .modal-dlrow{display:flex;align-items:center;gap:8px;padding:0 20px}
   .modal-dlrow .modal-search{flex:1;margin:12px 0 0}
   .dlbtn{margin-top:12px;white-space:nowrap;padding:8px 12px;border:0;border-radius:8px;cursor:pointer;
@@ -278,7 +282,7 @@
       <div class="attend flag warn" id="flagReporting" role="button" tabindex="0">
         <div class="big" id="frNum">—</div>
         <div class="txt">
-          <div class="lbl">Reporting gaps (last 3 days)</div>
+          <div class="lbl">Non-reporting</div>
           <div class="hint" id="frHint"></div>
         </div>
         <div class="cta">View list ›</div>
@@ -363,7 +367,17 @@
       <div class="modal-tools" id="fmTabs">
         <button data-t="red2" class="active">Red 2 days running</button>
         <button data-t="red">Red 3 days running</button>
-        <button data-t="nosubmit">Missed a day (last 3)</button>
+        <button data-t="nosubmit">Non-reporting</button>
+      </div>
+      <div class="nrctrl" id="fmNrCtrl" hidden>
+        <span class="nrctrl-l">Show schools that</span>
+        <select id="fmMode" aria-label="Non-reporting match mode">
+          <option value="any">missed any</option>
+          <option value="all">missed every one</option>
+        </select>
+        <span class="nrctrl-l">of the last</span>
+        <input id="fmN" type="number" min="1" max="30" value="3" aria-label="Number of reporting days">
+        <span class="nrctrl-l">reporting days.</span>
       </div>
       <div class="modal-dlrow">
         <input class="modal-search" id="fmSearch" placeholder="Search school name or UDISE…">
@@ -1157,21 +1171,62 @@ function renderFlagged(){
 
 // ---- flagged-schools modal ----
 let FM_TAB='red2';
+// Non-reporting modal filter state. Defaults to the old behaviour on open:
+// "missed ANY of last 3 reporting days".
+let FM_NR_MODE='any';   // 'any' | 'all'
+let FM_NR_N=3;          // 1..30
 function openFlag(tab){ FM_TAB=(tab==='nosubmit'||tab==='red'||tab==='red2')?tab:'red2'; document.getElementById('fmSearch').value='';
   document.querySelectorAll('#fmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t===FM_TAB));
+  const ctrl=document.getElementById('fmNrCtrl');
+  if(ctrl) ctrl.hidden = (FM_TAB!=='nosubmit');
   renderFlagModal(); document.getElementById('flagModal').classList.add('show'); }
 function closeFlag(){ document.getElementById('flagModal').classList.remove('show'); }
+
+// For the Non-reporting tab: build a per-school "missed" summary over the last
+// N reporting days using BOTH the live-submissions feed (/api/submissions) and
+// the processed Results store, so a school counts as having submitted on day D
+// if it appears in either. Returns {udise,name,missedDays,got} for every roster
+// school that doesn't satisfy the chosen (mode, N) criterion.
+function nonReportingList(mode, n){
+  const days=reportingDays();
+  const window=days.slice(-Math.max(1, Math.min(30, n|0)));
+  if(!window.length) return [];
+  // udise -> Set<date it submitted on>
+  const subBy=new Map();
+  const add=(u,d)=>{ u=String(u||'').trim(); if(!u||!d) return; (subBy.get(u)||subBy.set(u,new Set()).get(u)).add(d); };
+  for(const r of ROWS) add(r.school&&r.school.udise, r.date);
+  for(const d of Object.keys(SUBS_BY_DATE||{})) for(const u of (SUBS_BY_DATE[d]||[])) add(u, d);
+  const out=[];
+  const seen=new Set();
+  for(const s of ROSTER){
+    const u=String(s.udise||'').trim(); if(!u||seen.has(u)) continue; seen.add(u);
+    const sub=subBy.get(u)||new Set();
+    const missed=window.filter(d=>!sub.has(d));
+    const matches = mode==='all' ? missed.length===window.length : missed.length>0;
+    if(matches){
+      out.push({ udise:u, name:nameFor(u), missedDays:missed, got:window.length-missed.length, window:window.slice() });
+    }
+  }
+  return out;
+}
+
 // The filtered+sorted list for the active tab + search (shared by the modal
 // render and the Excel export so both always match).
 function currentFlagList(){
-  const { flagged }=schoolFlags();
   const q=(document.getElementById('fmSearch').value||'').trim().toLowerCase();
-  let list=flagged.slice();
-  if(FM_TAB==='red') list=list.filter(f=>f.redStreak);
-  else if(FM_TAB==='red2') list=list.filter(f=>f.red2Streak);
-  else if(FM_TAB==='nosubmit') list=list.filter(f=>f.missedRecent);
-  // 3-day streaks (strictest) come first, then 2-day-only, then alphabetical.
-  list.sort((a,b)=> (b.redStreak?1:0)-(a.redStreak?1:0) || (b.red2Streak?1:0)-(a.red2Streak?1:0) || a.name.localeCompare(b.name));
+  let list;
+  if(FM_TAB==='nosubmit'){
+    list=nonReportingList(FM_NR_MODE, FM_NR_N);
+    // Most missed first, then alphabetical.
+    list.sort((a,b)=> (b.missedDays.length-a.missedDays.length) || a.name.localeCompare(b.name));
+  } else {
+    const { flagged }=schoolFlags();
+    list=flagged.slice();
+    if(FM_TAB==='red') list=list.filter(f=>f.redStreak);
+    else if(FM_TAB==='red2') list=list.filter(f=>f.red2Streak);
+    // 3-day streaks (strictest) come first, then 2-day-only, then alphabetical.
+    list.sort((a,b)=> (b.redStreak?1:0)-(a.redStreak?1:0) || (b.red2Streak?1:0)-(a.red2Streak?1:0) || a.name.localeCompare(b.name));
+  }
   if(q) list=list.filter(f=>f.name.toLowerCase().includes(q)||String(f.udise).includes(q));
   return list;
 }
@@ -1180,7 +1235,16 @@ function flagReason(f){
   const parts=[];
   if(f.redStreak) parts.push(`Red flags on ${f.redStreak.length} reporting days running (${fmtShort(f.redStreak[0])}–${fmtShort(f.redStreak[f.redStreak.length-1])})`);
   else if(f.red2Streak) parts.push(`Red flags on ${f.red2Streak.length} reporting days running (${fmtShort(f.red2Streak[0])}–${fmtShort(f.red2Streak[f.red2Streak.length-1])})`);
-  if(f.missedRecent) parts.push(`Missed reporting on ${f.missedDays.length} of last ${RECENT_DAYS} days (${(f.missedDays||[]).map(fmtShort).join(', ')})`);
+  if(FM_TAB==='nosubmit' && f.window){
+    const span = f.window.length>1 ? `${fmtShort(f.window[0])}–${fmtShort(f.window[f.window.length-1])}` : fmtShort(f.window[0]);
+    const which = FM_NR_MODE==='all'
+      ? `Missed every one of last ${f.window.length} reporting days (${span})`
+      : `Missed ${f.missedDays.length} of last ${f.window.length} reporting days (${span})`;
+    parts.push(which);
+    if(f.missedDays && f.missedDays.length) parts.push(`days missed: ${f.missedDays.map(fmtShort).join(', ')}`);
+  } else if(f.missedRecent){
+    parts.push(`Missed reporting on ${f.missedDays.length} of last ${RECENT_DAYS} days (${(f.missedDays||[]).map(fmtShort).join(', ')})`);
+  }
   return parts.join(' ; ');
 }
 function renderFlagModal(){
@@ -1189,8 +1253,17 @@ function renderFlagModal(){
   const reds2=flagged.filter(f=>f.red2Streak).length;
   const nos=flagged.filter(f=>f.missedRecent).length;
   const span = last3&&last3.length ? ` (${fmtShort(last3[0])}–${fmtShort(last3[last3.length-1])})` : '';
-  document.getElementById('fmSub').textContent =
-    `${reds2} meal-quality (red ${RED_STREAK_SHORT} days) · ${reds} meal-quality (red ${RED_STREAK_DAYS} days) · ${nos} reporting gaps${span} · ${days.length} reporting days on record`;
+  if(FM_TAB==='nosubmit'){
+    const window=days.slice(-Math.max(1, Math.min(30, FM_NR_N|0)));
+    const wspan=window.length? ` (${fmtShort(window[0])}–${fmtShort(window[window.length-1])})`:'';
+    const mode = FM_NR_MODE==='all' ? 'missed EVERY one of' : 'missed ANY of';
+    const count = currentFlagList().length;
+    document.getElementById('fmSub').textContent =
+      `${count} schools ${mode} the last ${window.length} reporting days${wspan} · ${days.length} reporting days on record`;
+  } else {
+    document.getElementById('fmSub').textContent =
+      `${reds2} meal-quality (red ${RED_STREAK_SHORT} days) · ${reds} meal-quality (red ${RED_STREAK_DAYS} days) · ${nos} reporting gaps${span} · ${days.length} reporting days on record`;
+  }
   const list=currentFlagList();
   const el=document.getElementById('fmList');
   if(!list.length){ el.innerHTML=`<div class="slrow"><span class="ud">No schools match.</span></div>`; return; }
@@ -1200,8 +1273,17 @@ function renderFlagModal(){
     // 3-day streak school isn't double-badged in the 2-day list.
     if(f.redStreak) badges.push(`<span class="badge no">Red ${f.redStreak.length} days (${fmtShort(f.redStreak[0])}–${fmtShort(f.redStreak[f.redStreak.length-1])})</span>`);
     else if(f.red2Streak) badges.push(`<span class="badge no">Red ${f.red2Streak.length} days (${fmtShort(f.red2Streak[0])}–${fmtShort(f.red2Streak[f.red2Streak.length-1])})</span>`);
-    if(f.missedRecent){ const md=(f.missedDays||[]).map(fmtShort).join(', ');
-      badges.push(`<span class="badge warn">Missed ${f.missedDays.length} of last ${RECENT_DAYS}${md?`: ${md}`:''}</span>`); }
+    if(FM_TAB==='nosubmit' && f.window){
+      const n=f.window.length;
+      const label = FM_NR_MODE==='all'
+        ? `Missed all ${n} of last ${n}`
+        : `Missed ${f.missedDays.length} of last ${n}`;
+      const md=(f.missedDays||[]).map(fmtShort).join(', ');
+      badges.push(`<span class="badge warn">${label}${md?`: ${md}`:''}</span>`);
+    } else if(f.missedRecent){
+      const md=(f.missedDays||[]).map(fmtShort).join(', ');
+      badges.push(`<span class="badge warn">Missed ${f.missedDays.length} of last ${RECENT_DAYS}${md?`: ${md}`:''}</span>`);
+    }
     return `<div class="slrow" data-profile="${f.udise}" role="button" tabindex="0"><div><div class="nm"><span class="sn">${i+1}.</span> ${f.name}</div><div class="ud">UDISE ${f.udise}</div></div>
       <span class="rsn">${badges.join('')}</span></div>`;
   }).join('');
@@ -1229,9 +1311,19 @@ function flagExportRows(){
   return { header, rows, list };
 }
 function flagExportName(ext){
-  const { last3 }=schoolFlags();
-  const tag = FM_TAB==='red' ? `MealQuality_Red${RED_STREAK_DAYS}Days` : FM_TAB==='red2' ? `MealQuality_Red${RED_STREAK_SHORT}Days` : 'NonReporting';
-  const span = last3&&last3.length ? `${last3[0]}_to_${last3[last3.length-1]}` : 'latest';
+  const { last3, days }=schoolFlags();
+  let tag;
+  if(FM_TAB==='red') tag=`MealQuality_Red${RED_STREAK_DAYS}Days`;
+  else if(FM_TAB==='red2') tag=`MealQuality_Red${RED_STREAK_SHORT}Days`;
+  else {
+    const window=days.slice(-Math.max(1, Math.min(30, FM_NR_N|0)));
+    const n=window.length;
+    tag = FM_NR_MODE==='all' ? `NonReporting_AllOfLast${n}` : `NonReporting_AnyOfLast${n}`;
+  }
+  const window=FM_TAB==='nosubmit'
+    ? days.slice(-Math.max(1, Math.min(30, FM_NR_N|0)))
+    : (last3||[]);
+  const span = window&&window.length ? `${window[0]}_to_${window[window.length-1]}` : 'latest';
   return `MDM_${tag}_Hargaon_${span}.${ext}`;
 }
 function triggerDownload(blob, filename){
@@ -1255,7 +1347,10 @@ async function exportFlagExcel(){
     const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
     ws['!cols']=[{wch:6},{wch:16},{wch:40},{wch:52}];
     const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, FM_TAB==='red'?'Meal quality (3d)':FM_TAB==='red2'?'Meal quality (2d)':'Non-reporting');
+    const sheetName = FM_TAB==='red' ? 'Meal quality (3d)'
+                    : FM_TAB==='red2' ? 'Meal quality (2d)'
+                    : (FM_NR_MODE==='all' ? `Missed all of ${FM_NR_N}` : `Missed any of ${FM_NR_N}`);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
     XLSX.writeFile(wb, flagExportName('xlsx'));
   }catch(e){
     downloadFlagCSV(); // CDN unavailable → CSV (opens in Excel)
@@ -1667,10 +1762,17 @@ document.getElementById('flagModal').addEventListener('click',(e)=>{ if(e.target
 document.getElementById('fmTabs').addEventListener('click',(e)=>{
   const b=e.target.closest('button'); if(!b) return;
   document.querySelectorAll('#fmTabs button').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active'); FM_TAB=b.dataset.t; renderFlagModal();
+  b.classList.add('active'); FM_TAB=b.dataset.t;
+  const ctrl=document.getElementById('fmNrCtrl'); if(ctrl) ctrl.hidden = (FM_TAB!=='nosubmit');
+  renderFlagModal();
 });
 document.getElementById('fmSearch').addEventListener('input',renderFlagModal);
 document.getElementById('fmExport').addEventListener('click',exportFlagExcel);
+document.getElementById('fmMode').addEventListener('change',(e)=>{ FM_NR_MODE = e.target.value==='all'?'all':'any'; renderFlagModal(); });
+document.getElementById('fmN').addEventListener('input',(e)=>{
+  let n=parseInt(e.target.value,10); if(!Number.isFinite(n)) return;
+  n=Math.max(1, Math.min(30, n)); FM_NR_N=n; renderFlagModal();
+});
 
 // profile view wiring (in-page, not a modal)
 document.getElementById('pfBack').addEventListener('click',closeProfile);
