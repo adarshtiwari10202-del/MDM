@@ -30,3 +30,6 @@ scratch/
 .DS_Store
 Thumbs.db
 reports/
+
+# --- Generated deliverables (built by scripts, not source) ---
+MDM_*.docx
