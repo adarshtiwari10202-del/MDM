@@ -1,0 +1,25 @@
+{
+  "headers": [
+    "Timestamp",
+    "विद्यालय का नाम / School Name",
+    "आज की तारीख / Today's Date",
+    "आज MDM खाने वाले छात्रों की संख्या / Number of students who ate MDM today",
+    "फोटो 1: रसोईघर में खाना पकाते हुए / Photo 1: Food being cooked in Kitchen",
+    "फोटो 2: बड़े बर्तन में पका हुआ भोजन / Photo 2: Cooked meal in the vessel",
+    "वीडियो:  बर्तन से प्लेट में परोसते हुए / Video: Serving onto a plate",
+    "फोटो 3: खाने की प्लेट/ Plate with served food",
+    "अतिरिक्त टिप्पणी / Additional Remarks (Feedback)"
+  ],
+  "sample": {
+    "__rowIndex": 2,
+    "Timestamp": "9/18/2026 10:33:03",
+    "विद्यालय का नाम / School Name": "9240504102 NAVINAGAR-2 (PS)",
+    "आज की तारीख / Today's Date": "9/18/2026",
+    "आज MDM खाने वाले छात्रों की संख्या / Number of students who ate MDM today": "108",
+    "फोटो 1: रसोईघर में खाना पकाते हुए / Photo 1: Food being cooked in Kitchen": "https://drive.google.com/open?id=1xyxDuVGCYsG72ccqg23MlCNC3GM8iMEv",
+    "फोटो 2: बड़े बर्तन में पका हुआ भोजन / Photo 2: Cooked meal in the vessel": "https://drive.google.com/open?id=1G7QydQ8njTYnA3ibYpg3XcNnlsR7qEQN",
+    "वीडियो:  बर्तन से प्लेट में परोसते हुए / Video: Serving onto a plate": "https://drive.google.com/open?id=1TrKmKOXhrrWPVMpHTdCEZPQurlwkjMa_",
+    "फोटो 3: खाने की प्लेट/ Plate with served food": "https://drive.google.com/open?id=1b11Ry_F7jn97r8hgC7OjGAS6_lez-1Rm",
+    "अतिरिक्त टिप्पणी / Additional Remarks (Feedback)": ""
+  }
+}
