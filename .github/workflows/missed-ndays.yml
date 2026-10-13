@@ -1,0 +1,41 @@
+name: Missed last N days (4/5/6)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  missed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Build chronic non-reporter lists
+        env:
+          DATA_MODE: live
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
+          BASELINE_SHEET_ID: ${{ secrets.BASELINE_SHEET_ID }}
+          DAILY_SHEET_TAB: Form Responses 1
+          BASELINE_SHEET_TAB: Form Responses 1
+          OUT: MDM_Chronic_NonReporters.docx
+          WINDOWS: '4,5,6'
+        run: node scripts/missed-ndays.js
+      - name: Upload Word doc
+        uses: actions/upload-artifact@v4
+        with:
+          name: MDM_Chronic_NonReporters
+          path: MDM_Chronic_NonReporters.docx
+      - name: Commit JSON snapshot
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f reports/missed_ndays.json
+          git commit -m "data: missed_ndays.json snapshot [skip ci]" || echo "no changes"
+          git push origin HEAD:claude/mdm-monitoring-pipeline-xd3l9p
