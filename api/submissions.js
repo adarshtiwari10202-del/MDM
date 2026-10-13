@@ -16,12 +16,19 @@ export default async function handler(req, res) {
     const { readRoster } = await import('../backend/roster.js');
     const [subs, roster] = await Promise.all([getDailySubmissions(), readRoster()]);
 
-    const byDate = {}; // date -> Set(udise)
+    const byDate = {};        // date -> Set(udise)
+    const commentsByDate = {}; // date -> { udise: comment string }
     for (const s of subs) {
       const d = s.date;
       const u = String((s.school && s.school.udise) || '').trim();
       if (!d || !u) continue;
       (byDate[d] || (byDate[d] = new Set())).add(u);
+      const c = String(s.comment || '').trim();
+      if (c) {
+        const dc = commentsByDate[d] || (commentsByDate[d] = {});
+        // If a school submitted twice on the same day, keep the longest remark.
+        if (!dc[u] || c.length > dc[u].length) dc[u] = c;
+      }
     }
     const dates = Object.keys(byDate).sort();
     const submittedByDate = {};
@@ -35,6 +42,7 @@ export default async function handler(req, res) {
       rosterSize: roster.length,
       dates,
       submittedByDate,
+      commentsByDate,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

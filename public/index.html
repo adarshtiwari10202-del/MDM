@@ -122,6 +122,10 @@
   .chip.red{background:#f7e2db;color:var(--red)} .chip.amber{background:#f4e7d6;color:#9c6a34}
   .chip.ok{background:#dcebe4;color:#3d6b57} .chip.info{background:#e3eaf3;color:var(--grey)}
   .chip.red30{background:#fbeadf;color:#8c3e18;border:1px solid #e6c3af}
+  .chip.rmk{background:#eaf1fb;color:#1f3b66;border:1px solid #cfdbee;text-transform:none;letter-spacing:0;font-weight:600}
+  .scomment{margin:10px 0 2px;padding:9px 12px;background:#f6f8fc;border:1px solid var(--hair);border-left:3px solid var(--navy);border-radius:6px;display:flex;gap:10px;align-items:flex-start}
+  .scomment .scomment-l{font-size:11.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;flex:0 0 auto;padding-top:1px}
+  .scomment .scomment-t{font-size:13.5px;color:var(--ink);line-height:1.45;white-space:pre-wrap;word-break:break-word;flex:1 1 auto}
   .caret{color:var(--grey);font-size:12px;transition:transform .15s}
   .card.open .caret{transform:rotate(90deg)}
 
@@ -937,7 +941,7 @@ let ROWS=[], ROSTER=[], FILTER='all', SELECTED_DATE='all';
 // Live daily-form submission feed (independent of the evening AI run):
 // date -> array of UDISE codes that submitted that day. Powers the live
 // submission count and the "yet to report today" list during school hours.
-let SUBS_BY_DATE={}, SUB_DATES=[];
+let SUBS_BY_DATE={}, SUB_DATES=[], SUBS_COMMENTS={};  // commentsByDate: {date: {udise: text}}
 
 function fmtTime(iso){ if(!iso) return '—';
   return new Date(iso).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
@@ -979,7 +983,7 @@ function aiPendingForDate(){
 async function loadSubmissions(){
   try{
     const r=await fetch('/api/submissions');
-    if(r.ok){ const j=await r.json(); if(j && j.submittedByDate){ SUBS_BY_DATE=j.submittedByDate; SUB_DATES=(j.dates||[]).slice().sort(); } }
+    if(r.ok){ const j=await r.json(); if(j && j.submittedByDate){ SUBS_BY_DATE=j.submittedByDate; SUB_DATES=(j.dates||[]).slice().sort(); SUBS_COMMENTS=j.commentsByDate||{}; } }
   }catch(e){ /* no live feed → attendance falls back to the AI results store */ }
 }
 
@@ -1465,10 +1469,26 @@ function passFilter(row){
   return true;
 }
 
+// School-authored remark for a (school, date) pair, if any. Comes from the
+// live /api/submissions feed so it is available before the nightly AI pass.
+function commentFor(udise, date){
+  const u=String(udise||'').trim();
+  const d=String(date||'').trim();
+  if(!u||!d) return '';
+  return (SUBS_COMMENTS[d] && SUBS_COMMENTS[d][u]) || '';
+}
+function commentPanel(udise, date){
+  const c=commentFor(udise, date);
+  if(!c) return '';
+  const safe=String(c).replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return `<div class="scomment" title="School-authored remark for this submission"><span class="scomment-l">💬 School remark</span><span class="scomment-t">${safe}</span></div>`;
+}
+
 // One full submission card (media + flags + AI reading).
 // Used inside the school profile, one per day. `open` renders it expanded.
 function cardHtml(row, open){
   const sev = row.severity;
+  const u = row.school && row.school.udise;
   return `<div class="card sev-${sev==='info'?'ok':sev} ${open?'open':''}" data-card="${row.id}">
     <div class="chead" data-toggle="${row.id}">
       <div class="who">
@@ -1480,6 +1500,7 @@ function cardHtml(row, open){
     </div>
     <div class="cbody">
       ${mediaStrip(row)}
+      ${commentPanel(u, row.date)}
       <div class="cols">
         <div><div class="h4">Automated flags</div>${flagPanel(row)}</div>
         <div><div class="h4">AI reading (what is visible)</div>${aiPanel(row)}</div>
@@ -1498,11 +1519,16 @@ function queueRow(row){
   const red30Chip = red30>0
     ? `<span class="chip red30" title="Red flags on ${red30} of the last 30 reporting days (anchored at the selected date)">⚠ ${red30}/30 d red</span>`
     : '';
+  const c=commentFor(u, row.date);
+  const commentChip = c
+    ? `<span class="chip rmk" title="${String(c).replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}">💬 remark</span>`
+    : '';
   return `<div class="qrow sev-${sev==='info'?'ok':sev}" data-profile="${u}" role="button" tabindex="0">
     <div class="who">
       <div class="name">${row.school.name}</div>
       <div class="meta">UDISE ${row.school.udise} · ${fmtTime(row.submittedAt)} · menu: ${row.menuLabel || (Array.isArray(row.menu)?row.menu.join(', '):'')}</div>
     </div>
+    ${commentChip}
     ${red30Chip}
     ${severityChip(row)}
     <span class="cta">Open profile ›</span>

@@ -23,6 +23,9 @@ const DAILY_COLS = {
   // Specific wording so it never collides with the video column
   // ("...Serving onto a plate"). Matches the relabelled 4th upload.
   plate: ['plate with', 'all the food', 'thali', 'सम्पूर्ण भोजन', 'भोजन की थाली'],
+  // Column I on the daily form — free-text remark the school adds to the day's
+  // submission. Keyword-matched so a bilingual re-label still resolves.
+  comment: ['additional remarks', 'remarks', 'feedback', 'comment', 'टिप्पणी'],
 };
 
 /** Resolve logical field -> actual header string present in the sheet. */
@@ -154,5 +157,7 @@ export function parseDailyRow(row, cols, opts = {}) {
       serving_video: fileFromUrl(get('serving_video')),
       plate: fileFromUrl(get('plate')),
     },
+    // School's own remark on this submission (may be empty).
+    comment: String(get('comment') || '').trim(),
   };
 }
