@@ -138,8 +138,7 @@
   .attend:active{transform:translateY(1px)}
   .attend.ok{border-left-color:var(--teal)}
   .attend.warn{border-left-color:var(--gold,#e0a92e)}
-  .flagrow{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-  @media(max-width:900px){ .flagrow{grid-template-columns:1fr 1fr} }
+  .flagrow{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .flagrow .attend{margin-bottom:16px}
   @media(max-width:640px){ .flagrow{grid-template-columns:1fr;gap:0} }
   .attend .big{font-family:"Archivo",sans-serif;font-weight:800;font-size:30px;color:var(--red);line-height:1}
@@ -263,14 +262,6 @@
   <div class="wrap">
    <div id="mainView">
     <div class="flagrow" id="flagRow" style="display:none">
-      <div class="attend flag" id="flagQuality2" role="button" tabindex="0">
-        <div class="big" id="fq2Num">—</div>
-        <div class="txt">
-          <div class="lbl">Meal-quality (2 days running)</div>
-          <div class="hint" id="fq2Hint"></div>
-        </div>
-        <div class="cta">View list ›</div>
-      </div>
       <div class="attend flag" id="flagQuality" role="button" tabindex="0">
         <div class="big" id="fqNum">—</div>
         <div class="txt">
@@ -365,8 +356,7 @@
         <button class="x" id="fmClose" aria-label="Close">×</button>
       </div>
       <div class="modal-tools" id="fmTabs">
-        <button data-t="red2" class="active">Red 2 days running</button>
-        <button data-t="red">Red 3 days running</button>
+        <button data-t="red" class="active">Red 3 days running</button>
         <button data-t="nosubmit">Non-reporting</button>
       </div>
       <div class="nrctrl" id="fmNrCtrl" hidden>
@@ -1142,16 +1132,7 @@ function renderFlagged(){
   row.style.display='grid';
   const win = last3&&last3.length ? last3.length : RECENT_DAYS;
   const span = last3&&last3.length ? `${fmtShort(last3[0])}–${fmtShort(last3[last3.length-1])}` : '';
-  const span2 = last2&&last2.length===RED_STREAK_SHORT ? `${fmtShort(last2[0])}–${fmtShort(last2[last2.length-1])}` : '';
-  // --- Tile 1: meal-quality 2-day streak (softer, earlier signal) ---
-  const reds2=flagged.filter(f=>f.red2Streak).length;
-  const q2El=document.getElementById('flagQuality2');
-  q2El.classList.toggle('ok', reds2===0);
-  document.getElementById('fq2Num').textContent=reds2;
-  document.getElementById('fq2Hint').textContent = reds2===0
-    ? `No school red on the last ${RED_STREAK_SHORT} reporting days running`
-    : `Red flags on the last ${RED_STREAK_SHORT} reporting days${span2?` (${span2})`:''} · click for the list`;
-  // --- Tile 2: meal-quality 3-day streak (strict) ---
+  // --- Tile 1: meal-quality 3-day streak (strict) ---
   const reds=flagged.filter(f=>f.redStreak).length;
   const qEl=document.getElementById('flagQuality');
   qEl.classList.toggle('ok', reds===0);
@@ -1170,12 +1151,12 @@ function renderFlagged(){
 }
 
 // ---- flagged-schools modal ----
-let FM_TAB='red2';
+let FM_TAB='red';
 // Non-reporting modal filter state. Defaults to the old behaviour on open:
 // "missed ANY of last 3 reporting days".
 let FM_NR_MODE='any';   // 'any' | 'all'
 let FM_NR_N=3;          // 1..30
-function openFlag(tab){ FM_TAB=(tab==='nosubmit'||tab==='red'||tab==='red2')?tab:'red2'; document.getElementById('fmSearch').value='';
+function openFlag(tab){ FM_TAB=(tab==='nosubmit'||tab==='red')?tab:'red'; document.getElementById('fmSearch').value='';
   document.querySelectorAll('#fmTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t===FM_TAB));
   const ctrl=document.getElementById('fmNrCtrl');
   if(ctrl) ctrl.hidden = (FM_TAB!=='nosubmit');
@@ -1262,7 +1243,7 @@ function renderFlagModal(){
       `${count} schools ${mode} the last ${window.length} reporting days${wspan} · ${days.length} reporting days on record`;
   } else {
     document.getElementById('fmSub').textContent =
-      `${reds2} meal-quality (red ${RED_STREAK_SHORT} days) · ${reds} meal-quality (red ${RED_STREAK_DAYS} days) · ${nos} reporting gaps${span} · ${days.length} reporting days on record`;
+      `${reds} meal-quality (red ${RED_STREAK_DAYS} days) · ${nos} reporting gaps${span} · ${days.length} reporting days on record`;
   }
   const list=currentFlagList();
   const el=document.getElementById('fmList');
@@ -1748,9 +1729,6 @@ document.getElementById('tpClose').addEventListener('click',closeTestModal);
 document.getElementById('testModal').addEventListener('click',(e)=>{ if(e.target.id==='testModal') closeTestModal(); });
 
 // flagged-schools tiles → open the modal on the matching tab
-const fq2El=document.getElementById('flagQuality2');
-fq2El.addEventListener('click',()=>openFlag('red2'));
-fq2El.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openFlag('red2'); }});
 const fqEl=document.getElementById('flagQuality');
 fqEl.addEventListener('click',()=>openFlag('red'));
 fqEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openFlag('red'); }});
