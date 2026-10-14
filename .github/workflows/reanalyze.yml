@@ -9,6 +9,9 @@ on:
       date_from:
         description: Re-analyse submissions with date AFTER this (YYYY-MM-DD)
         default: '2026-09-19'
+      date_to:
+        description: Optional inclusive upper bound (YYYY-MM-DD); blank = no cap
+        default: ''
       concurrency:
         description: Parallel submissions
         default: '4'
@@ -39,5 +42,6 @@ jobs:
           BASELINE_SHEET_TAB: Form Responses 1
           RESULTS_SHEET_TAB: Results
           DATE_FROM: ${{ github.event.inputs.date_from || '2026-09-19' }}
+          DATE_TO: ${{ github.event.inputs.date_to || '' }}
           CONCURRENCY: ${{ github.event.inputs.concurrency || '4' }}
         run: node scripts/reanalyze.js

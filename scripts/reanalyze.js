@@ -17,6 +17,7 @@ import { readResults, clearResults, appendResults, ensureHeader } from '../backe
 
 const ITEMS = ['cooking', 'cooked_meal', 'serving_video', 'plate'];
 const DATE_FROM = process.env.DATE_FROM || '2026-09-19';
+const DATE_TO = process.env.DATE_TO || '';   // optional inclusive upper bound (YYYY-MM-DD); empty = no upper bound
 const CONCURRENCY = Math.max(1, Number(process.env.CONCURRENCY || 4));
 const hasAI = (f) => { const a = f && f.ai; return !!(a && typeof a === 'object' && (a.scene_type || a.observed_scene || a.notes || (a.dishes_visible && a.dishes_visible.length) || a.food_present != null || a.cooking_in_progress != null)); };
 
@@ -39,8 +40,10 @@ async function pool(items, n, worker) {
 async function main() {
   if (config.dataMode !== 'live') { console.log('[reanalyze] DATA_MODE must be live'); process.exit(1); }
   const [stored, subs] = await Promise.all([readResults(), getDailySubmissions()]);
-  const kept = stored.filter((r) => (r.date || '') <= DATE_FROM);
-  const targets = subs.filter((s) => (s.date || '') > DATE_FROM);
+  // kept = rows the reanalyze will NOT touch (outside the (DATE_FROM, DATE_TO] window).
+  const inWindow = (d) => (d || '') > DATE_FROM && (!DATE_TO || (d || '') <= DATE_TO);
+  const kept = stored.filter((r) => !inWindow(r.date));
+  const targets = subs.filter((s) => inWindow(s.date));
   // A stored row is "done" if every present file already has AI, or has a
   // permanent 400 (bad image) that a retry won't fix. Such rows are reused
   // as-is so a re-run only spends credits on what's still missing (idempotent).
@@ -52,7 +55,7 @@ async function main() {
     const prev = storedById.get(s.id);
     if (prev && rowDone(prev)) reused.push(prev); else toProcess.push(s);
   }
-  console.log(`[reanalyze] stored=${stored.length}  keep ≤${DATE_FROM}: ${kept.length}  >${DATE_FROM}: ${targets.length} (reuse already-done ${reused.length}, process missing ${toProcess.length})  concurrency=${CONCURRENCY}`);
+  console.log(`[reanalyze] stored=${stored.length}  window=(${DATE_FROM}, ${DATE_TO || '∞'}]  keep ${kept.length}  targets ${targets.length} (reuse already-done ${reused.length}, process missing ${toProcess.length})  concurrency=${CONCURRENCY}`);
   if (!toProcess.length) { console.log('[reanalyze] nothing missing to process'); return; }
 
   const processed = await pool(toProcess, CONCURRENCY, (s) => processSubmission(s, { live: true }));
