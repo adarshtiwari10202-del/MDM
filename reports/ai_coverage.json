@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-13T03:27:44.666Z",
+  "generated_at": "2026-10-14T06:38:45.274Z",
   "byDate": {
     "2026-09-18": {
       "rows": 53,
@@ -182,20 +182,20 @@
       "aiRows": 173
     },
     "2026-10-13": {
-      "rows": 1,
-      "present": 4,
+      "rows": 181,
+      "present": 724,
       "ai": 0,
-      "err": 4,
+      "err": 724,
       "none": 0,
       "missing": 0,
       "aiRows": 0
     }
   },
   "totals": {
-    "rows": 2425,
-    "present": 9700,
+    "rows": 2605,
+    "present": 10420,
     "ai": 9467,
-    "err": 233,
+    "err": 953,
     "none": 0,
     "missing": 0,
     "aiRows": 2416
