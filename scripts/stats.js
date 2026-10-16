@@ -7,16 +7,26 @@
 // Needs: GOOGLE_SERVICE_ACCOUNT_JSON, RESULTS_SHEET_ID, RESULTS_SHEET_TAB.
 // ============================================================
 import { readResults } from '../backend/store.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const RED_STREAK_DAYS = 3;
+const MIN_REPORTING_SUBS = 25;
+const HOLIDAYS = new Set(['2026-10-02']);
+const isSunday = (d) => { try { return new Date(d + 'T12:00:00Z').getUTCDay() === 0; } catch (e) { return false; } };
 const udiseOf = (r) => (r.school && r.school.udise || '').trim();
 
 async function main() {
   const rows = await readResults();
   console.log(`[stats] ${rows.length} stored rows`);
 
-  // Reporting days = distinct dates that appear in the data, sorted.
-  const days = [...new Set(rows.map((r) => r.date).filter(Boolean))].sort();
+  // Reporting days = distinct dates present, minus Sundays, holidays and
+  // outage days (<MIN_REPORTING_SUBS submissions) — matches the dashboard.
+  const subCount = new Map();
+  for (const r of rows) { const u = udiseOf(r); if (!u || !r.date) continue; (subCount.get(r.date) || subCount.set(r.date, new Set()).get(r.date)).add(u); }
+  const days = [...new Set(rows.map((r) => r.date).filter(Boolean))]
+    .filter((d) => !isSunday(d) && !HOLIDAYS.has(d) && (subCount.get(d) || new Set()).size >= MIN_REPORTING_SUBS)
+    .sort();
   console.log(`[stats] ${days.length} reporting days: ${days.join(', ')}`);
 
   // Per day: distinct schools with at least one RED submission that day.
@@ -60,6 +70,21 @@ async function main() {
   console.log(`(2) Schools red on ${RED_STREAK_DAYS} consecutive days   : ${streakSchools}`);
   console.log('========================================');
   if (streakList.length) console.log(`[stats] streak UDISEs: ${streakList.join(', ')}`);
+
+  const latest = days[days.length - 1] || null;
+  const out = {
+    generated_at: new Date().toISOString(),
+    reportingDays: days,
+    latestDay: latest,
+    latestFlagged: latest ? (redByDay.get(latest) || new Set()).size : 0,
+    latestSubmitted: latest ? (subByDay.get(latest) || new Set()).size : 0,
+    avgFlaggedPerDay: Number(avg.toFixed(1)),
+    redStreak3: streakSchools,
+    redStreak3Udise: streakList,
+  };
+  const dir = path.join(process.cwd(), 'reports');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'flag_stats.json'), JSON.stringify(out, null, 2));
 }
 
 main().catch((e) => { console.error('[stats] FAILED:', e); process.exit(1); });
