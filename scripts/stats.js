@@ -78,6 +78,23 @@ async function main() {
   if (lastWindow.length === RED_STREAK_DAYS) {
     for (const [, set] of redBySchool) if (lastWindow.every((d) => set.has(d))) currentStreak++;
   }
+
+  // Per-anchor-day 3-consecutive-day streak: for every reporting day D that has
+  // two prior reporting days, how many schools were red on D and both prior
+  // reporting days. This is the "new 3-day-streak schools, measured each day".
+  const streakByDay = [];
+  for (let i = RED_STREAK_DAYS - 1; i < days.length; i++) {
+    const win = days.slice(i - RED_STREAK_DAYS + 1, i + 1);
+    let c = 0;
+    for (const [, set] of redBySchool) if (win.every((d) => set.has(d))) c++;
+    streakByDay.push({ day: days[i], count: c });
+  }
+  const streakDailyAvg = streakByDay.length ? streakByDay.reduce((a, x) => a + x.count, 0) / streakByDay.length : 0;
+  // Weekly view: group anchor-days into calendar ISO weeks, average per week.
+  const isoWeek = (iso) => { const d = new Date(iso + 'T00:00:00Z'); const t = new Date(d); t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7)); const ys = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return t.getUTCFullYear() + '-W' + String(Math.ceil(((t - ys) / 86400000 + 1) / 7)).padStart(2, '0'); };
+  const byWeek = new Map();
+  for (const x of streakByDay) { (byWeek.get(isoWeek(x.day)) || byWeek.set(isoWeek(x.day), []).get(isoWeek(x.day))).push(x.count); }
+  const weekly = [...byWeek.entries()].map(([wk, arr]) => ({ week: wk, avg: Number((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)), days: arr.length }));
   const redSeries = days.map((d) => ({ date: d, red: (redByDay.get(d) || new Set()).size, submitted: (subByDay.get(d) || new Set()).size }));
 
   const latest = days[days.length - 1] || null;
@@ -91,8 +108,15 @@ async function main() {
     redStreak3EverCount: streakSchools,
     currentStreak3Window: lastWindow,
     currentStreak3: currentStreak,
+    streakByDay,
+    streakDailyAvg: Number(streakDailyAvg.toFixed(1)),
+    streakWeekly: weekly,
     redSeries,
   };
+  console.log('\n[stats] per-day 3-consecutive-day red-streak count:');
+  streakByDay.forEach((x) => console.log(`   ${x.day}: ${x.count}`));
+  console.log(`[stats] daily average 3-day-streak schools: ${streakDailyAvg.toFixed(1)}`);
+  console.log('[stats] weekly average:', JSON.stringify(weekly));
   const dir = path.join(process.cwd(), 'reports');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'flag_stats.json'), JSON.stringify(out, null, 2));
