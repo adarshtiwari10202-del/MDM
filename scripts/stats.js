@@ -71,6 +71,15 @@ async function main() {
   console.log('========================================');
   if (streakList.length) console.log(`[stats] streak UDISEs: ${streakList.join(', ')}`);
 
+  // CURRENT rolling-window streak: schools red on the LAST RED_STREAK_DAYS
+  // reporting days (matches the dashboard tile), not any-streak-ever.
+  const lastWindow = days.slice(-RED_STREAK_DAYS);
+  let currentStreak = 0;
+  if (lastWindow.length === RED_STREAK_DAYS) {
+    for (const [, set] of redBySchool) if (lastWindow.every((d) => set.has(d))) currentStreak++;
+  }
+  const redSeries = days.map((d) => ({ date: d, red: (redByDay.get(d) || new Set()).size, submitted: (subByDay.get(d) || new Set()).size }));
+
   const latest = days[days.length - 1] || null;
   const out = {
     generated_at: new Date().toISOString(),
@@ -79,8 +88,10 @@ async function main() {
     latestFlagged: latest ? (redByDay.get(latest) || new Set()).size : 0,
     latestSubmitted: latest ? (subByDay.get(latest) || new Set()).size : 0,
     avgFlaggedPerDay: Number(avg.toFixed(1)),
-    redStreak3: streakSchools,
-    redStreak3Udise: streakList,
+    redStreak3EverCount: streakSchools,
+    currentStreak3Window: lastWindow,
+    currentStreak3: currentStreak,
+    redSeries,
   };
   const dir = path.join(process.cwd(), 'reports');
   fs.mkdirSync(dir, { recursive: true });
