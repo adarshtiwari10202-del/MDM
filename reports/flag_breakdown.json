@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-10-17T06:17:17.205Z",
+  "totalRows": 3150,
+  "days": [
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-08",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12",
+    "2026-10-13",
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-16"
+  ],
+  "perCode": {
+    "geo_missing": 1409,
+    "menu_missing": 1002,
+    "geo_inconsistent": 135,
+    "duplicate_media": 26,
+    "no_food": 15,
+    "hygiene_concern": 15
+  },
+  "redRows": 1122,
+  "cleanRows": 2028,
+  "geoMissingOnlyReds": 0,
+  "substantiveRows": 1122,
+  "itemMissing": {
+    "cooking": 0,
+    "cooked_meal": 0,
+    "serving_video": 0,
+    "plate": 0
+  },
+  "rowsWithAnyMissingItem": 0,
+  "avgFlaggedPerDay": 45.7,
+  "avgFlaggedPerDayExclGeo": 45.7
+}
