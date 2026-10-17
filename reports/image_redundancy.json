@@ -1,0 +1,132 @@
+{
+  "generated_at": "2026-10-17T06:49:38.012Z",
+  "rowsWithBothReadings": 3053,
+  "cookingImage_observedScene": {
+    "cooked_food_in_cookware": 863,
+    "cooking": 2058,
+    "serving": 46,
+    "served_plate": 18,
+    "other": 68
+  },
+  "cookedMealImage_observedScene": {
+    "cooked_food_in_cookware": 2698,
+    "other": 13,
+    "served_plate": 69,
+    "serving": 132,
+    "cooking": 141
+  },
+  "cookingInProgress": {
+    "false": 1012,
+    "true": 1706
+  },
+  "heatSource": {
+    "no_heat_visible": 1537,
+    "unclear": 210,
+    "steam_only": 288,
+    "flame": 1018
+  },
+  "kitchenVisible": {
+    "yes": 2466,
+    "no": 473,
+    "unclear": 114
+  },
+  "personCooking": {
+    "no": 1474,
+    "yes": 1562,
+    "unclear": 17
+  },
+  "kitchenCleanliness": {
+    "average": 1903,
+    "unclear": 524,
+    "clean": 625,
+    "dirty": 1
+  },
+  "cookingImageQuality": {
+    "clear": 3006,
+    "slightly_blurry": 41,
+    "too_blurry": 5,
+    "obstructed": 1
+  },
+  "cookedImageQuality": {
+    "clear": 3020,
+    "slightly_blurry": 27,
+    "obstructed": 4,
+    "too_blurry": 2
+  },
+  "appearsFreshlyCooked": {
+    "yes": 2994,
+    "unclear": 57,
+    "no": 2
+  },
+  "cookwareFillLevel": {
+    "full": 1569,
+    "about_half": 1238,
+    "unclear": 183,
+    "low": 63
+  },
+  "dishComparableRows": 3036,
+  "dishIdenticalSets": 651,
+  "dishIdenticalPct": "21%",
+  "avgDishJaccard": 0.39,
+  "cookingAddsADishNotInCooked": 1233,
+  "cookedAddsADishNotInCooking": 2089,
+  "kitchenDirtyFlags": 1,
+  "kitchenDirtyUniqueToCookingImage": 1,
+  "cookFieldPresent": {
+    "observed_scene": 3053,
+    "scene_matches_expected": 3053,
+    "image_quality": 3053,
+    "is_photo_of_a_screen": 3053,
+    "gps_present": 3053,
+    "gps_lat": 3053,
+    "gps_lng": 3053,
+    "stamp_place_text": 3053,
+    "capture_datetime_text": 3053,
+    "confidence": 3053,
+    "notes": 3053,
+    "cooking_in_progress": 3053,
+    "heat_source": 3053,
+    "food_or_ingredients_visible": 3053,
+    "large_cooking_vessel_visible": 3053,
+    "kitchen_visible_in_frame": 3053,
+    "person_cooking_present": 3053,
+    "kitchen_cleanliness": 3053,
+    "dishes_being_cooked": 3053,
+    "scene_type": 3053,
+    "dishes_visible": 3053,
+    "food_present": 3053,
+    "area_cleanliness": 2893,
+    "food_on_bare_floor": 2893,
+    "food_left_uncovered": 2893,
+    "waste_or_pests_visible": 2893,
+    "hygiene_notes": 2893
+  },
+  "cookedFieldPresent": {
+    "observed_scene": 3053,
+    "scene_matches_expected": 3053,
+    "image_quality": 3053,
+    "is_photo_of_a_screen": 3053,
+    "gps_present": 3053,
+    "gps_lat": 3053,
+    "gps_lng": 3053,
+    "stamp_place_text": 3053,
+    "capture_datetime_text": 3053,
+    "confidence": 3053,
+    "notes": 3053,
+    "food_present": 3053,
+    "top_down_view": 3053,
+    "number_of_distinct_dishes": 3053,
+    "dishes_visible": 3053,
+    "menu_items": 3053,
+    "appears_freshly_cooked": 3053,
+    "cookware_fill_level": 3053,
+    "scene_type": 3053,
+    "cooking_in_progress": 3053,
+    "menu_items_present": 3053,
+    "area_cleanliness": 2893,
+    "food_on_bare_floor": 2893,
+    "food_left_uncovered": 2893,
+    "waste_or_pests_visible": 2893,
+    "hygiene_notes": 2893
+  }
+}
