@@ -6,6 +6,8 @@
 // Needs: GOOGLE_SERVICE_ACCOUNT_JSON, RESULTS_SHEET_ID, RESULTS_SHEET_TAB.
 // ============================================================
 import { readResults } from '../backend/store.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const RED_STREAK_DAYS = 3;
 const udiseOf = (r) => (r.school && r.school.udise || '').trim();
@@ -60,6 +62,27 @@ async function main() {
   console.log(`Avg schools flagged/day   — current: ${dayAvg(isRedNow).toFixed(1)}   |   excluding geo_missing: ${dayAvg(isRedSub).toFixed(1)}`);
   console.log(`Schools on 3-day streak   — current: ${streak(isRedNow)}   |   excluding geo_missing: ${streak(isRedSub)}`);
   console.log('========================================');
+
+  // Per-item missing breakdown (which of the 4 uploads is most often absent).
+  const ITEMS = ['cooking', 'cooked_meal', 'serving_video', 'plate'];
+  const itemMissing = {}; ITEMS.forEach((k) => (itemMissing[k] = 0));
+  let withAnyMissing = 0;
+  for (const r of rows) { let any = false; for (const k of ITEMS) { const f = r.files?.[k]; if (!f || f.missing) { itemMissing[k]++; any = true; } } if (any) withAnyMissing++; }
+
+  const out = {
+    generated_at: new Date().toISOString(),
+    totalRows: rows.length, days,
+    perCode: Object.fromEntries([...perCode.entries()].sort((a, b) => b[1] - a[1])),
+    redRows: red.length, cleanRows: clean,
+    geoMissingOnlyReds: geoMissingOnly.length,
+    substantiveRows: substantive.length,
+    itemMissing, rowsWithAnyMissingItem: withAnyMissing,
+    avgFlaggedPerDay: Number(dayAvg(isRedNow).toFixed(1)),
+    avgFlaggedPerDayExclGeo: Number(dayAvg(isRedSub).toFixed(1)),
+  };
+  const dir = path.join(process.cwd(), 'reports');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'flag_breakdown.json'), JSON.stringify(out, null, 2));
 }
 
 main().catch((e) => { console.error('[breakdown] FAILED:', e); process.exit(1); });

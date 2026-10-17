@@ -3,6 +3,9 @@ name: Flag breakdown
 on:
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   breakdown:
     runs-on: ubuntu-latest
@@ -19,3 +22,10 @@ jobs:
           RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
           RESULTS_SHEET_TAB: Results
         run: node scripts/flag-breakdown.js
+      - name: Commit breakdown JSON
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f reports/flag_breakdown.json
+          git commit -m "data: flag_breakdown.json snapshot [skip ci]" || echo "no changes"
+          git push origin HEAD:claude/mdm-monitoring-pipeline-xd3l9p
