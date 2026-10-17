@@ -1,0 +1,285 @@
+{
+  "generated_at": "2026-10-17T06:17:39.137Z",
+  "totalSubmissions": 3152,
+  "totalWithComment": 1580,
+  "overallPct": 50,
+  "perDay": [
+    {
+      "date": "2026-09-18",
+      "subs": 53,
+      "withComment": 30,
+      "pct": 57
+    },
+    {
+      "date": "2026-09-19",
+      "subs": 118,
+      "withComment": 61,
+      "pct": 52
+    },
+    {
+      "date": "2026-09-21",
+      "subs": 115,
+      "withComment": 60,
+      "pct": 52
+    },
+    {
+      "date": "2026-09-22",
+      "subs": 124,
+      "withComment": 59,
+      "pct": 48
+    },
+    {
+      "date": "2026-09-23",
+      "subs": 131,
+      "withComment": 74,
+      "pct": 56
+    },
+    {
+      "date": "2026-09-24",
+      "subs": 132,
+      "withComment": 66,
+      "pct": 50
+    },
+    {
+      "date": "2026-09-28",
+      "subs": 79,
+      "withComment": 42,
+      "pct": 53
+    },
+    {
+      "date": "2026-09-29",
+      "subs": 120,
+      "withComment": 59,
+      "pct": 49
+    },
+    {
+      "date": "2026-09-30",
+      "subs": 145,
+      "withComment": 70,
+      "pct": 48
+    },
+    {
+      "date": "2026-10-01",
+      "subs": 128,
+      "withComment": 64,
+      "pct": 50
+    },
+    {
+      "date": "2026-10-02",
+      "subs": 4,
+      "withComment": 4,
+      "pct": 100
+    },
+    {
+      "date": "2026-10-03",
+      "subs": 148,
+      "withComment": 73,
+      "pct": 49
+    },
+    {
+      "date": "2026-10-05",
+      "subs": 181,
+      "withComment": 92,
+      "pct": 51
+    },
+    {
+      "date": "2026-10-06",
+      "subs": 196,
+      "withComment": 102,
+      "pct": 52
+    },
+    {
+      "date": "2026-10-07",
+      "subs": 188,
+      "withComment": 92,
+      "pct": 49
+    },
+    {
+      "date": "2026-10-08",
+      "subs": 188,
+      "withComment": 95,
+      "pct": 51
+    },
+    {
+      "date": "2026-10-09",
+      "subs": 190,
+      "withComment": 92,
+      "pct": 48
+    },
+    {
+      "date": "2026-10-10",
+      "subs": 6,
+      "withComment": 2,
+      "pct": 33
+    },
+    {
+      "date": "2026-10-11",
+      "subs": 1,
+      "withComment": 1,
+      "pct": 100
+    },
+    {
+      "date": "2026-10-12",
+      "subs": 174,
+      "withComment": 89,
+      "pct": 51
+    },
+    {
+      "date": "2026-10-13",
+      "subs": 181,
+      "withComment": 84,
+      "pct": 46
+    },
+    {
+      "date": "2026-10-14",
+      "subs": 178,
+      "withComment": 90,
+      "pct": 51
+    },
+    {
+      "date": "2026-10-15",
+      "subs": 177,
+      "withComment": 84,
+      "pct": 47
+    },
+    {
+      "date": "2026-10-16",
+      "subs": 190,
+      "withComment": 94,
+      "pct": 49
+    },
+    {
+      "date": "2026-10-17",
+      "subs": 5,
+      "withComment": 1,
+      "pct": 20
+    }
+  ],
+  "samples": [
+    {
+      "date": "2026-09-18",
+      "udise": "9240508902",
+      "comment": "No comment"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240506901",
+      "comment": "No"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240502602",
+      "comment": "Ok"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240507101",
+      "comment": "No"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240501101",
+      "comment": "Thanks indeed but uploading took much time"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240510601",
+      "comment": "खाना सफाई से गुणवत्ता पूर्ण बना"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240503501",
+      "comment": "Mdm  ki gudvatta par acha sudhar hoga"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240502302",
+      "comment": "NA"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240501701",
+      "comment": "सभी बच्चों ने समय भोजन ग्रहण किया।"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240515401",
+      "comment": "Ok"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240508502",
+      "comment": "Meal served 132 students"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240500901",
+      "comment": "No"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240500601",
+      "comment": "All good"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240508601",
+      "comment": "Na"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240502401",
+      "comment": "Done"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240503701",
+      "comment": "Good"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240506503",
+      "comment": "NA"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240511503",
+      "comment": "बच्चों को साफ़ सुथरी तरीक़े से  एम डी यम वितरित किया गया"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240500803",
+      "comment": "M.D.M are distributed by que"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240504208",
+      "comment": "MDM वितरण सुगमता पूर्वक किया गया"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240514701",
+      "comment": "Friday MDM"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240506301",
+      "comment": "MDM SERVE ACCORDING TO MENU."
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240503801",
+      "comment": "No"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240506603",
+      "comment": "खाद्यान की कमी है"
+    },
+    {
+      "date": "2026-09-18",
+      "udise": "9240500704",
+      "comment": "Ok"
+    }
+  ]
+}
