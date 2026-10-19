@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-16T07:15:28.747Z",
+  "generated_at": "2026-10-19T11:14:22.927Z",
   "byDate": {
     "2026-09-18": {
       "rows": 53,
@@ -207,16 +207,43 @@
       "none": 0,
       "missing": 0,
       "aiRows": 176
+    },
+    "2026-10-16": {
+      "rows": 190,
+      "present": 760,
+      "ai": 744,
+      "err": 16,
+      "none": 0,
+      "missing": 0,
+      "aiRows": 190
+    },
+    "2026-10-17": {
+      "rows": 183,
+      "present": 732,
+      "ai": 720,
+      "err": 12,
+      "none": 0,
+      "missing": 0,
+      "aiRows": 183
+    },
+    "2026-10-18": {
+      "rows": 4,
+      "present": 16,
+      "ai": 16,
+      "err": 0,
+      "none": 0,
+      "missing": 0,
+      "aiRows": 4
     }
   },
   "totals": {
-    "rows": 2960,
-    "present": 11840,
-    "ai": 11567,
-    "err": 273,
+    "rows": 3337,
+    "present": 13348,
+    "ai": 13047,
+    "err": 301,
     "none": 0,
     "missing": 0,
-    "aiRows": 2950
+    "aiRows": 3327
   },
   "errSamples": {
     "2026-09-18": "Gemini 400: {\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Unable to process input image. Please retry or report in https://developers.gene",
@@ -239,6 +266,8 @@
     "2026-10-12": "Gemini 400: {\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Unable to process input image. Please retry or report in https://developers.gene",
     "2026-10-13": "Gemini 502: <!DOCTYPE html>\n<html lang=en>\n  <meta charset=utf-8>\n  <meta name=viewport content=\"initial-scale=1, minimum-scale=1, width=dev",
     "2026-10-14": "Gemini 400: {\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Unable to process input image. Please retry or report in https://developers.gene",
-    "2026-10-15": "Gemini 400: {\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Unable to process input image. Please retry or report in https://developers.gene"
+    "2026-10-15": "Gemini 400: {\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Unable to process input image. Please retry or report in https://developers.gene",
+    "2026-10-16": "Gemini 400: {\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Unable to process input image. Please retry or report in https://developers.gene",
+    "2026-10-17": "Gemini 400: {\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Unable to process input image. Please retry or report in https://developers.gene"
   }
 }
