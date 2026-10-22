@@ -1,0 +1,25 @@
+name: Reveal service account email
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract client_email (identifier only, not the key)
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          node -e "const j=JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON); const fs=require('fs'); fs.mkdirSync('reports',{recursive:true}); fs.writeFileSync('reports/sa_email.txt', (j.client_email||'')+'\n');"
+      - name: Commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f reports/sa_email.txt
+          git commit -m "data: service account email [skip ci]" || echo "no changes"
+          git push origin HEAD:claude/mdm-monitoring-pipeline-xd3l9p
