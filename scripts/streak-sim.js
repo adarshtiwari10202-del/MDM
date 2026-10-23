@@ -6,7 +6,7 @@
 import '../backend/config.js';
 import { readResults } from '../backend/store.js';
 
-const HOLIDAYS = new Set(['2026-10-02']);
+const HOLIDAYS = new Set(['2026-10-02', '2026-10-23']);
 const isSunday = (d) => { try { return new Date(d + 'T12:00:00Z').getUTCDay() === 0; } catch (e) { return false; } };
 const isOff = (d) => isSunday(d) || HOLIDAYS.has(d);
 

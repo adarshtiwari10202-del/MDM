@@ -1081,7 +1081,7 @@ const RED_STREAK_DAYS=3, RED_STREAK_SHORT=2, RECENT_DAYS=3;
 
 // Days the block was NOT expected to report (holidays). These never count as a
 // reporting day, so no school is flagged for "missing" them. Add dates here.
-const HOLIDAYS=new Set(['2026-10-02']);
+const HOLIDAYS=new Set(['2026-10-02','2026-10-23']);
 // Sundays are weekly off everywhere in the block — never a reporting day,
 // never a gap. Noon UTC avoids any timezone edge in day-of-week lookup.
 function isSunday(d){ try{ return new Date(d+'T12:00:00Z').getUTCDay()===0; }catch(e){ return false; } }

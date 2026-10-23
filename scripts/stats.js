@@ -12,7 +12,7 @@ import path from 'node:path';
 
 const RED_STREAK_DAYS = 3;
 const MIN_REPORTING_SUBS = 25;
-const HOLIDAYS = new Set(['2026-10-02']);
+const HOLIDAYS = new Set(['2026-10-02', '2026-10-23']);
 const isSunday = (d) => { try { return new Date(d + 'T12:00:00Z').getUTCDay() === 0; } catch (e) { return false; } };
 const udiseOf = (r) => (r.school && r.school.udise || '').trim();
 

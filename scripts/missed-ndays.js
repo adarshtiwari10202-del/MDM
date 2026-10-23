@@ -20,7 +20,7 @@ import {
   Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType,
 } from 'docx';
 
-const HOLIDAYS = new Set(['2026-10-02']);
+const HOLIDAYS = new Set(['2026-10-02', '2026-10-23']);
 const MIN_REPORTING_SUBS = 25;
 const REPORT_CUTOFF_HOUR = 19;
 const WINDOWS = (process.env.WINDOWS || '4,5,6').split(',').map((s) => Number(s.trim())).filter((n) => n > 0);
