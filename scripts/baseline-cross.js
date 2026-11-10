@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const MIN_REPORTING_SUBS = 25;
-const HOLIDAYS = new Set(['2026-10-02', '2026-10-23']);
+const HOLIDAYS = new Set(['2026-10-02', '2026-10-23', '2026-11-09']);
 const isSunday = (d) => { try { return new Date(d + 'T12:00:00Z').getUTCDay() === 0; } catch { return false; } };
 const PROFILE_SHEET_ID = process.env.PROFILE_SHEET_ID || '1yh2VUK_CUvXbCcr4RlPd7oYaQpx1GVigmlyFl59sA5k';
 const PROFILE_TAB = process.env.PROFILE_SHEET_TAB || 'Form Responses 1';
