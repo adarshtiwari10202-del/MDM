@@ -23,6 +23,11 @@ const DAILY_COLS = {
   // Specific wording so it never collides with the video column
   // ("...Serving onto a plate"). Matches the relabelled 4th upload.
   plate: ['plate with', 'all the food', 'thali', 'सम्पूर्ण भोजन', 'भोजन की थाली'],
+  // Column J — optional extra photo schools upload only on Monday (fruit day)
+  // and Wednesday (milk day), showing the fruit / milk given before the meal.
+  // Keyword-matched so a bilingual re-label still resolves; wording is unique
+  // so it never collides with the four core media columns.
+  fruit_milk: ['fruit or milk', 'फल या दूध', 'monday/wednesday only'],
   // Column I on the daily form — free-text remark the school adds to the day's
   // submission. Keyword-matched so a bilingual re-label still resolves.
   comment: ['additional remarks', 'remarks', 'feedback', 'comment', 'टिप्पणी'],
@@ -156,6 +161,7 @@ export function parseDailyRow(row, cols, opts = {}) {
       cooked_meal: fileFromUrl(get('cooked_meal')),
       serving_video: fileFromUrl(get('serving_video')),
       plate: fileFromUrl(get('plate')),
+      fruit_milk: fileFromUrl(get('fruit_milk')),
     },
     // School's own remark on this submission (may be empty).
     comment: String(get('comment') || '').trim(),

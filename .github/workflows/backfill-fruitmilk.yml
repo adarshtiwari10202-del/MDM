@@ -1,0 +1,57 @@
+name: Backfill fruit/milk photo analysis
+
+# One-shot (manual) job: analyse the Monday/Wednesday fruit-&-milk extra photo
+# (form column J) for stored submissions, merge the reading into the store,
+# then re-flag and export the readable sheet so dashboards + alerts reflect it.
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'Only backfill rows on/after this date (YYYY-MM-DD)'
+        type: string
+        default: '2026-11-01'
+      force:
+        description: 'Re-analyse even rows that already have a fruit/milk reading'
+        type: boolean
+        default: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Analyse fruit/milk photos (AI) and merge into store
+        env:
+          DATA_MODE: live
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.6-flash
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DAILY_SHEET_ID: ${{ secrets.DAILY_SHEET_ID }}
+          BASELINE_SHEET_ID: ${{ secrets.BASELINE_SHEET_ID }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          DAILY_SHEET_TAB: Form Responses 1
+          BASELINE_SHEET_TAB: Form Responses 1
+          RESULTS_SHEET_TAB: Results
+        run: node scripts/backfill-fruitmilk.js --since=${{ inputs.since }} ${{ inputs.force && '--force' || '' }}
+
+      - name: Re-flag stored results with the new reading
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          RESULTS_SHEET_TAB: Results
+        run: node scripts/reflag.js
+
+      - name: Export readable AI analysis
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          RESULTS_SHEET_TAB: Results
+          AI_SHEET_ID: 1Hv1_ovqbwePuAWMPGLktAPiF47uZwWtcyMSEM7TTl-w
+          AI_SHEET_TAB: AI Analysis
+        run: node scripts/export-ai-readable.js

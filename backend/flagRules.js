@@ -239,7 +239,11 @@ export function evaluateSubmission(submission, config = {}) {
   // "unclear" and is NEVER flagged (this stops false positives from imperfect
   // dish recognition).
   if (menu.length) {
-    const stages = cfg.requiredItems; // ['cooking','cooked_meal','serving_video','plate']
+    // The four core media PLUS the optional Monday/Wednesday fruit/milk photo.
+    // On other days (or when it is absent) `fruit_milk` has no AI reading, so
+    // gatherSeen/gatherMip simply skip it — harmless. On Mon/Wed it lets a
+    // fruit or milk served before the meal count toward menu compliance.
+    const stages = [...cfg.requiredItems, 'fruit_milk'];
     const seenAll = gatherSeen(stages);
     const mipAll = gatherMip(stages);
     const confirmedAbsent = (name) => {

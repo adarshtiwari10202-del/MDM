@@ -11,17 +11,36 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { evaluateSubmission } from './flagRules.js';
-import { menuDishList } from './menu.js';
+import { menuDishList, DISH_CATEGORIES } from './menu.js';
 import { config } from './config.js';
 
 // Daily items (form upload slots) and the AI stage each maps to.
-const ITEMS = ['cooking', 'cooked_meal', 'serving_video', 'plate'];
+// `fruit_milk` is the optional Monday/Wednesday extra photo of the fruit / milk
+// served before the meal. It is NOT a required item (its absence never flags a
+// school for a missing upload, hygiene, geo or duplicate) — it only feeds the
+// menu-compliance check for fruit (Mon) and milk (Wed).
+const ITEMS = ['cooking', 'cooked_meal', 'serving_video', 'plate', 'fruit_milk'];
 const ITEM_STAGE = {
   cooking: 'cooking',
   cooked_meal: 'cooked_food',
   serving_video: 'serving',
   plate: 'plate',
+  fruit_milk: 'fruit_milk',
 };
+
+// Tokens that identify a fruit- or milk-related dish, so the fruit_milk photo's
+// reading can be clamped to fruit/milk only and never affect any other item.
+const FRUITMILK_TOKENS = [...DISH_CATEGORIES.fruit, ...DISH_CATEGORIES.milk,
+  'kela', 'seb', 'doodh', 'फल', 'केला', 'दूध', 'सेब'];
+const isFruitMilkToken = (s) => {
+  const t = String(s || '').toLowerCase();
+  return FRUITMILK_TOKENS.some((tok) => t.includes(tok));
+};
+
+/** True when the day's menu actually prescribes fruit or milk (Mon / Wed). */
+export function dayWantsFruitMilk(menuList) {
+  return (menuList || []).some((m) => /fruit|milk/i.test(String(m)));
+}
 
 // tri-state 'yes'|'no'|'unclear' -> true|false|null
 const yn = (x) => (x === 'yes' ? true : x === 'no' ? false : null);
@@ -32,9 +51,9 @@ const yn = (x) => (x === 'yes' ? true : x === 'no' ? false : null);
  * merge in these legacy fields so nothing downstream breaks. The flag-policy
  * redesign will consume the rich v2 fields directly.
  */
-function normalizeReading(stage, v2) {
+export function normalizeReading(stage, v2) {
   if (!v2 || typeof v2 !== 'object') return v2;
-  const dishes = v2.dishes_visible || v2.dishes_on_plate || v2.dishes_served || v2.dishes_being_cooked || [];
+  let dishes = v2.dishes_visible || v2.dishes_on_plate || v2.dishes_served || v2.dishes_being_cooked || [];
   const legacy = {
     scene_type: v2.observed_scene,
     dishes_visible: dishes,
@@ -48,6 +67,17 @@ function normalizeReading(stage, v2) {
       if (mi.status === 'present') legacy.menu_items_present[mi.item] = true;
       else if (mi.status === 'absent') legacy.menu_items_present[mi.item] = false;
       // 'unclear' is intentionally omitted so it never triggers a menu flag
+    }
+  }
+  // Safety clamp: the fruit_milk extra photo must only ever speak about fruit and
+  // milk. Strip any other dish the model may have listed so this reading can NEVER
+  // mark another menu item seen/absent, whatever the prompt returns.
+  if (stage === 'fruit_milk') {
+    legacy.dishes_visible = (legacy.dishes_visible || []).filter(isFruitMilkToken);
+    if (legacy.menu_items_present) {
+      legacy.menu_items_present = Object.fromEntries(
+        Object.entries(legacy.menu_items_present).filter(([k]) => isFruitMilkToken(k)),
+      );
     }
   }
   return { ...v2, ...legacy };
@@ -75,6 +105,7 @@ const SLOT_LABEL = {
   cooked_meal: 'Cooked-meal',
   serving_video: 'Serving-video',
   plate: 'Plate',
+  fruit_milk: 'Fruit/Milk',
 };
 
 /** Human-readable "who/when/which photo" descriptor for a submission's slot,
@@ -130,11 +161,15 @@ function mergeStamp(file) {
 export async function processSubmission(sub, ctx = {}) {
   const live = ctx.live ?? (config.dataMode === 'live');
   const menu = menuDishList(sub.menu);
+  // The fruit_milk extra photo is only meaningful (and only analysed) on days
+  // the menu prescribes fruit or milk — i.e. Monday and Wednesday.
+  const wantFruitMilk = dayWantsFruitMilk(menu);
 
   if (live) {
     const { fetchDriveFile } = await import('./sheets.js');
     const { analyzeImage, analyzeVideo } = await import('./ai.js');
     for (const k of ITEMS) {
+      if (k === 'fruit_milk' && !wantFruitMilk) continue;
       const f = sub.files[k];
       if (!f || f.missing || !f.fileId) continue;
       try {
@@ -158,6 +193,7 @@ export async function processSubmission(sub, ctx = {}) {
   } else {
     // sample mode: readings already attached; still honour stamp + hash dedupe.
     for (const k of ITEMS) {
+      if (k === 'fruit_milk' && !wantFruitMilk) continue;
       const f = sub.files[k];
       if (!f || f.missing) continue;
       if (f.hash) markDuplicate(f, sub, k, ctx.seenHashes);

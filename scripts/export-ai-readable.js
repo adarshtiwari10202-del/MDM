@@ -42,6 +42,19 @@ function notesOf(r) {
   return '';
 }
 
+// Mon/Wed extra fruit/milk photo → short readable summary (column V).
+function fruitMilkCol(r) {
+  const a = aiOf(r, 'fruit_milk');
+  const fm = r.files && r.files.fruit_milk;
+  if (!a) return fm ? (fm.error ? 'error' : '') : '';
+  const dishes = arr(a.dishes_visible);
+  if (dishes) return dishes;
+  const bits = [];
+  if (a.fruit_visible === 'yes') bits.push('fruit');
+  if (a.milk_visible === 'yes') bits.push('milk');
+  return bits.join(', ') || 'none seen';
+}
+
 function rowFor(r) {
   const cook = aiOf(r, 'cooking'), cooked = aiOf(r, 'cooked_meal'), serv = aiOf(r, 'serving_video'), plate = aiOf(r, 'plate');
   return [
@@ -53,6 +66,7 @@ function rowFor(r) {
     serv ? (serv.serving_action_visible || '') : '', serv ? arr(serv.dishes_served) : '',
     plate ? arr(plate.dishes_visible) : '',
     hygieneArea(r), gpsCount(r), worstQuality(r), notesOf(r), r.processedAt || '',
+    fruitMilkCol(r),
   ];
 }
 
@@ -69,8 +83,13 @@ async function main() {
   const data = rows.map(rowFor);
   console.log(`[export] ${data.length} rows → "${AI_TAB}"`);
   const sheets = await sheetsClient();
+  // Ensure the column V header label exists (fruit/milk extra photo).
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: AI_SHEET_ID, range: `${AI_TAB}!V1`, valueInputOption: 'RAW',
+    requestBody: { values: [['fruit_milk_photo (Mon/Wed)']] },
+  });
   // clear old body then write (idempotent full rewrite; header row kept)
-  await sheets.spreadsheets.values.clear({ spreadsheetId: AI_SHEET_ID, range: `${AI_TAB}!A2:U200000` });
+  await sheets.spreadsheets.values.clear({ spreadsheetId: AI_SHEET_ID, range: `${AI_TAB}!A2:V200000` });
   if (data.length) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: AI_SHEET_ID, range: `${AI_TAB}!A2`, valueInputOption: 'RAW', requestBody: { values: data },

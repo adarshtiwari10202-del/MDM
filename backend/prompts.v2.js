@@ -50,6 +50,15 @@ Report: is a serving action visible? is food moved from cookware onto a plate? L
 Today's prescribed menu is: ${menu}.
 Report: list the dishes on the plate. For EACH prescribed menu item, mark present / absent / unclear. Rate plate fullness using the rubric below. Are all menu components together on one plate? Is it a single standard plate?
 ${RUBRICS.plate_fullness}`,
+
+  // Monday/Wednesday extra photo of the fruit / milk served before the meal.
+  // Scoped to fruit & milk ONLY so it can never mark any other item absent.
+  fruit_milk: () => `This is an EXTRA photo some schools upload only on Monday (fruit day) and Wednesday (milk day). It shows the fruit and/or milk served to the children — often given before the main meal.
+Report ONLY about fruit and milk. Ignore every other food item in the frame.
+- fruit_visible: is any fresh fruit (e.g. banana, apple, guava) clearly visible? yes / no / unclear.
+- milk_visible: is milk (a glass, cup or vessel of milk) clearly visible? yes / no / unclear.
+- dishes_visible: list ONLY the fruit or milk items you can see (for example "banana", "milk"). Do NOT list rice, roti, dal, sabzi or any other dish, even if visible.
+- menu_items: include ONLY "fruit" and/or "milk", each with its status (present / absent / unclear). Do NOT include any other item in this list.`,
 };
 
 /**

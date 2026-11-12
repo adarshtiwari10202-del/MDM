@@ -1378,7 +1378,7 @@ async function exportFlagExcel(){
   }finally{ btn.disabled=false; btn.textContent=old; }
 }
 
-const ITEM_LABELS={cooking:'Cooking',cooked_meal:'Cooked meal',serving_video:'Serving (video)',plate:'Plate'};
+const ITEM_LABELS={cooking:'Cooking',cooked_meal:'Cooked meal',serving_video:'Serving (video)',plate:'Plate',fruit_milk:'Fruit / Milk'};
 const ITEM_KEYS=['cooking','cooked_meal','serving_video','plate'];
 
 function renderKpis(){
@@ -1408,7 +1408,11 @@ function renderKpis(){
 }
 
 function mediaStrip(row){
-  return `<div class="media">`+ITEM_KEYS.map(k=>{
+  // The optional Monday/Wednesday fruit-&-milk photo is shown as a 5th tile only
+  // when the school actually uploaded one (it isn't part of the required four).
+  const fm=row.files&&row.files.fruit_milk;
+  const keys=(fm&&!fm.missing&&(fm.fileId||fm.localMedia||fm.url))?[...ITEM_KEYS,'fruit_milk']:ITEM_KEYS;
+  return `<div class="media">`+keys.map(k=>{
     const f=row.files[k]||{};
     if(f.missing) return `<div class="thumb"><span class="tl">${ITEM_LABELS[k]}</span><div class="ph" style="color:var(--red)">Not submitted</div></div>`;
     const scene=(f.ai&&f.ai.scene_type)?f.ai.scene_type.replace(/_/g,' '):'';
@@ -1446,6 +1450,15 @@ function aiPanel(row){
     if(ai.food_on_bare_floor==='yes') hyg.push('on bare floor');
     if(hyg.length) bits.push('hygiene — '+hyg.join(', '));
     rows.push(`<div class="ailine"><b>${ITEM_LABELS[k]}:</b> ${bits.join(' · ')||'—'}${ai.notes?`<br><span style="color:var(--grey)">“${ai.notes}”</span>`:''}</div>`);
+  }
+  // Monday/Wednesday fruit-&-milk extra photo (if analysed for this submission).
+  const fm=row.files&&row.files.fruit_milk&&row.files.fruit_milk.ai;
+  if(fm){
+    const b=[];
+    if(fm.dishes_visible&&fm.dishes_visible.length) b.push('seen: '+fm.dishes_visible.join(', '));
+    if(fm.fruit_visible) b.push('fruit '+(fm.fruit_visible==='yes'?'present':fm.fruit_visible==='no'?'not seen':'unclear'));
+    if(fm.milk_visible) b.push('milk '+(fm.milk_visible==='yes'?'present':fm.milk_visible==='no'?'not seen':'unclear'));
+    rows.push(`<div class="ailine"><b>${ITEM_LABELS.fruit_milk}:</b> ${b.join(' · ')||'—'}</div>`);
   }
   return rows.join('');
 }

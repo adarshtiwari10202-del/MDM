@@ -80,6 +80,15 @@ const STAGE_FIELDS = {
     all_menu_components_together_on_one_plate: YN(),
     single_standard_plate: YN(),
   },
+  // Extra Monday/Wednesday photo of the fruit / milk served before the meal.
+  // Deliberately scoped to fruit & milk ONLY, so this reading can never mark
+  // any other menu item absent (see prompts.v2.js for the matching instruction).
+  fruit_milk: {
+    fruit_visible: YN(),
+    milk_visible: YN(),
+    dishes_visible: STR_ARRAY(),
+    menu_items: MENU_ITEMS(),
+  },
 };
 
 export const STAGES = Object.keys(STAGE_FIELDS);
