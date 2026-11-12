@@ -33,7 +33,16 @@ const has = (k) => process.argv.includes(`--${k}`);
 const SINCE = arg('since', '2026-11-01');
 const FORCE = has('force');
 const LIMIT = Number(arg('limit', '0')) || 0; // 0 = no cap
-const CONCURRENCY = Number(arg('concurrency', '6')) || 6;
+// Gemini's per-minute cap means high concurrency just triggers 429/backoff;
+// 3 keeps throughput near the limit without a 429 storm.
+const CONCURRENCY = Number(arg('concurrency', '3')) || 3;
+const ITEM_TIMEOUT_MS = Number(arg('timeout', '120000')) || 120000; // guard a hung fetch
+const CHECKPOINT_EVERY = Number(arg('checkpoint', '120')) || 120;   // periodic store save
+
+const withTimeout = (p, ms, label) => Promise.race([
+  p,
+  new Promise((_, rej) => setTimeout(() => rej(new Error(`timeout after ${ms}ms (${label})`)), ms)),
+]);
 
 const hasAi = (f) => !!(f && f.ai && typeof f.ai === 'object'
   && (f.ai.observed_scene || f.ai.menu_items_present || f.ai.fruit_visible != null
@@ -84,14 +93,19 @@ async function main() {
   console.log(`[backfill] ${work.length} photos to analyse (since ${SINCE}, force=${FORCE})`);
   if (!work.length) { console.log('[backfill] nothing to do.'); return; }
 
-  let ok = 0; let err = 0;
+  let ok = 0; let err = 0; let sinceCheckpoint = 0;
+  const saveStore = async (tag) => {
+    await clearResults();
+    await appendResults(rows);
+    console.log(`[backfill]   checkpoint saved (${tag})`);
+  };
   await pool(work, CONCURRENCY, async ({ r, fm, menu }) => {
     try {
-      const buf = await fetchDriveFile(fm.fileId);
+      const buf = await withTimeout(fetchDriveFile(fm.fileId), ITEM_TIMEOUT_MS, 'drive');
       const hash = crypto.createHash('sha256').update(buf).digest('hex');
-      const ai = normalizeReading('fruit_milk', await analyzeImage(buf, { stage: 'fruit_milk', menuItems: menu }));
+      const raw = await withTimeout(analyzeImage(buf, { stage: 'fruit_milk', menuItems: menu }), ITEM_TIMEOUT_MS, 'ai');
       r.files = r.files || {};
-      r.files.fruit_milk = { fileId: fm.fileId, url: fm.url || '', hash, ai };
+      r.files.fruit_milk = { fileId: fm.fileId, url: fm.url || '', hash, ai: normalizeReading('fruit_milk', raw) };
       ok++;
     } catch (e) {
       err++;
@@ -99,11 +113,12 @@ async function main() {
       r.files.fruit_milk = { fileId: fm.fileId, url: fm.url || '', error: e.message };
       console.error(`[backfill] ${r.id}: ${e.message}`);
     }
+    // Periodic checkpoint so an interruption never loses analysed photos.
+    if (++sinceCheckpoint >= CHECKPOINT_EVERY) { sinceCheckpoint = 0; await saveStore(`${ok + err} done`); }
   });
 
   console.log(`[backfill] analysed ${ok} ok, ${err} errors — rewriting store...`);
-  await clearResults();
-  await appendResults(rows);
+  await saveStore('final');
   console.log(`[backfill] done. Now run: node scripts/reflag.js`);
 }
 
