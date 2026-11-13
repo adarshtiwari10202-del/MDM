@@ -24,8 +24,6 @@ const DATE = arg('date', '');                 // ISO, e.g. 2026-11-12
 const DATE_HINDI = arg('date-hindi', '');      // e.g. "12 नवंबर"
 const WRITE = has('write');
 
-const RESULTS_SHEET_ID = process.env.RESULTS_SHEET_ID;
-const RESULTS_TAB = process.env.RESULTS_SHEET_TAB || 'Results';
 const GLIFIC_SHEET_ID = process.env.GLIFIC_SHEET_ID;
 const ROSTER_TAB = process.env.ROSTER_TAB || 'All HM Contacts';
 const LOOKUP_TAB = process.env.LOOKUP_TAB || 'Lookup';
@@ -37,7 +35,7 @@ const S = (v) => String(v == null ? '' : v).trim();
 
 async function main() {
   if (!DATE || !DATE_HINDI) { console.error('Need --date=YYYY-MM-DD and --date-hindi="..."'); process.exit(1); }
-  if (!RESULTS_SHEET_ID || !GLIFIC_SHEET_ID) { console.error('Need RESULTS_SHEET_ID and GLIFIC_SHEET_ID'); process.exit(1); }
+  if (!GLIFIC_SHEET_ID) { console.error('Need GLIFIC_SHEET_ID'); process.exit(1); }
 
   const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
   const auth = new google.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
@@ -60,15 +58,17 @@ async function main() {
     roster.push({ udise, phone, name });
   }
 
-  // --- submitters on DATE (from the results store: col 'date', col 'udise') ---
-  const stRes = await sheets.spreadsheets.values.get({ spreadsheetId: RESULTS_SHEET_ID, range: `${RESULTS_TAB}!A1:C` });
-  const stRows = stRes.data.values || [];
-  const sHead = (stRows[0] || []).map((h) => S(h).toLowerCase());
-  const dCol = sHead.indexOf('date');
-  const uCol = sHead.indexOf('udise');
+  // --- submitters on DATE, straight from the LIVE daily sheet (not the store),
+  // using the pipeline's own effectiveDate (timestamp date = reporting day). This
+  // stays correct even when the nightly processor hasn't caught up to the latest
+  // submissions yet. A report submitted after midnight counts for the day it was
+  // sent, exactly as the dashboard/streak logic treats it. ---
+  process.env.DATA_MODE = process.env.DATA_MODE || 'live';
+  const { getDailySubmissions } = await import('../backend/source.js');
+  const subs = await getDailySubmissions();
   const submitted = new Set();
-  for (const row of stRows.slice(1)) {
-    if (S(row[dCol]) === DATE) submitted.add(S(row[uCol]));
+  for (const s of subs) {
+    if (S(s.date) === DATE && s.school && s.school.udise) submitted.add(S(s.school.udise));
   }
 
   const nonSub = roster.filter((s) => !submitted.has(s.udise))
