@@ -1,0 +1,39 @@
+name: Non-submission Lookup (WhatsApp alerts)
+
+# Build the Glific "Lookup" sheet for schools that did not submit on a given day.
+# Dry-run by default (prints the list, writes nothing). Set write=true to publish.
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Reporting day, ISO (YYYY-MM-DD)'
+        type: string
+        required: true
+      date_hindi:
+        description: 'Date in Hindi for the message, e.g. "12 नवंबर"'
+        type: string
+        required: true
+      write:
+        description: 'Publish to the Lookup tab (Glific will send). Leave false to dry-run.'
+        type: boolean
+        default: false
+
+jobs:
+  nonsub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Build non-submission Lookup
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          RESULTS_SHEET_ID: ${{ secrets.RESULTS_SHEET_ID }}
+          RESULTS_SHEET_TAB: Results
+          GLIFIC_SHEET_ID: 10jvk-rncjtv6iiwWJe7OwAr4Ojt3tvYPZHQKFs1F-Ac
+          ROSTER_TAB: All HM Contacts
+          LOOKUP_TAB: Lookup
+        run: node scripts/nonsub-lookup.js --date='${{ inputs.date }}' --date-hindi='${{ inputs.date_hindi }}' ${{ inputs.write && '--write' || '' }}
