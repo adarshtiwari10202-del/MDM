@@ -24,7 +24,7 @@ const HEADERS = [
 
 // The real test row.
 const ROW = {
-  'Timestamp': '9/13/2026 2:30:45',
+  'Timestamp': '9/13/2026 11:30:45',
   'Email Address': '',
   'विद्यालय का नाम / School Name': 'Test',
   "आज की तारीख / Today's Date": '9/13/2026',
@@ -47,7 +47,7 @@ const sub = parseDailyRow(ROW, cols, { rowIndex: 2 });
 check('udise parsed', sub.school.udise === '9192912922');
 check('date -> ISO 2026-09-13', sub.date === '2026-09-13');
 check('headcount 56', sub.headcountReported === 56);
-check('submittedAt in IST', sub.submittedAt === '2026-09-13T02:30:45+05:30');
+check('submittedAt in IST', sub.submittedAt === '2026-09-13T11:30:45+05:30');
 check('cooking file id extracted', sub.files.cooking.fileId === '165e5MhtCSbHKRxydSz7-D2duifm9RCFc');
 check('cooked_meal file id extracted', sub.files.cooked_meal.fileId === '1SVtt-cQawBlaThzt3Ptn-c9MirxSkFH-');
 check('empty video -> missing:true', sub.files.serving_video.missing === true);
@@ -87,6 +87,12 @@ check('typed far in the past (typo) → timestamp, mismatch', effectiveDate('202
 check('no manual date → timestamp, no mismatch', effectiveDate(null, TS).date === '2026-09-24' && effectiveDate(null, TS).source === 'timestamp' && effectiveDate(null, TS).mismatch === false);
 check('no timestamp → fall back to manual', effectiveDate('2026-09-24', null).date === '2026-09-24' && effectiveDate('2026-09-24', null).source === 'manual');
 check('neither → null', effectiveDate(null, null).date === null);
+
+// --- morning cutoff: a report before 10:30 AM IST counts for the PREVIOUS day ---
+check('before 10:30 → previous day', effectiveDate(null, '2026-11-13T05:35:12+05:30').date === '2026-11-12');
+check('just before 10:30 → previous day', effectiveDate(null, '2026-11-13T10:29:00+05:30').date === '2026-11-12');
+check('at 10:30 → same day', effectiveDate(null, '2026-11-13T10:30:00+05:30').date === '2026-11-13');
+check('after 10:30 → same day', effectiveDate(null, '2026-11-13T13:05:00+05:30').date === '2026-11-13');
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

@@ -102,9 +102,31 @@ function fileFromUrl(url) {
  * @param {string|null} submittedAtISO ISO datetime from toISODateTime(timestamp)
  * @returns {{date: string|null, source: 'timestamp'|'manual'|'none', mismatch: boolean}}
  */
+// The MDM meal is served around mid-day, so a report is expected during/after
+// the meal. A submission that lands BEFORE this IST cutoff is treated as a late
+// report for the PREVIOUS day (e.g. a report sent at 7 AM is for yesterday's
+// meal, not today's). 10:30 = start of the meal window.
+export const MEAL_CUTOFF_MIN = 10 * 60 + 30; // 10:30 AM IST
+
+/** Reporting day for an IST-stamped submission, applying the morning cutoff.
+ *  submittedAtISO is 'YYYY-MM-DDTHH:MM:SS+05:30' (IST wall-clock, from
+ *  toISODateTime), so the date/time fields are read directly. */
+export function reportingDayIST(submittedAtISO) {
+  const m = String(submittedAtISO || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return submittedAtISO ? String(submittedAtISO).slice(0, 10) : null;
+  const [, y, mo, d, hh, mi] = m;
+  if (Number(hh) * 60 + Number(mi) >= MEAL_CUTOFF_MIN) return `${y}-${mo}-${d}`;
+  // Before the cutoff → the previous calendar day.
+  const dt = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+  dt.setUTCDate(dt.getUTCDate() - 1);
+  return dt.toISOString().slice(0, 10);
+}
+
 export function effectiveDate(manualISO, submittedAtISO) {
-  const ts = submittedAtISO ? String(submittedAtISO).slice(0, 10) : null;
-  if (ts) return { date: ts, source: 'timestamp', mismatch: !!manualISO && manualISO !== ts };
+  if (submittedAtISO) {
+    const date = reportingDayIST(submittedAtISO);
+    return { date, source: 'timestamp', mismatch: !!manualISO && manualISO !== date };
+  }
   if (manualISO) return { date: manualISO, source: 'manual', mismatch: false };
   return { date: null, source: 'none', mismatch: false };
 }
