@@ -63,12 +63,18 @@ async function main() {
   // stays correct even when the nightly processor hasn't caught up to the latest
   // submissions yet. A report submitted after midnight counts for the day it was
   // sent, exactly as the dashboard/streak logic treats it. ---
+  // A school counts as having reported for DATE if EITHER its submission-timestamp
+  // date OR its typed "Today's Date" is DATE. The typed-date clause catches reports
+  // sent after midnight for the previous day (e.g. a Nov-12 report submitted early
+  // on Nov 13, before that day's meal) — those schools did report, so they are not
+  // non-submitters.
   process.env.DATA_MODE = process.env.DATA_MODE || 'live';
   const { getDailySubmissions } = await import('../backend/source.js');
   const subs = await getDailySubmissions();
   const submitted = new Set();
   for (const s of subs) {
-    if (S(s.date) === DATE && s.school && s.school.udise) submitted.add(S(s.school.udise));
+    if (!(s.school && s.school.udise)) continue;
+    if (S(s.date) === DATE || S(s.manualDate) === DATE) submitted.add(S(s.school.udise));
   }
 
   const nonSub = roster.filter((s) => !submitted.has(s.udise))
