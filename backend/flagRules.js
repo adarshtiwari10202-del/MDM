@@ -257,7 +257,7 @@ export function evaluateSubmission(submission, config = {}) {
     };
     const missing = menu.filter(itemAbsent);
     if (missing.length) {
-      flags.push(flag('menu_missing', 'red', `Prescribed dish confirmed missing (not in any photo or the video): ${missing.map(itemLabel).join(', ')}`, 'ai'));
+      flags.push(flag('menu_missing', 'red', `Prescribed dish confirmed missing (not visible in any photo): ${missing.map(itemLabel).join(', ')}`, 'ai'));
     }
   }
 

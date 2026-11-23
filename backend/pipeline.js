@@ -7,9 +7,6 @@
 // is already attached to each file, so this stays free and offline.
 // ============================================================
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { evaluateSubmission } from './flagRules.js';
 import { menuDishList, DISH_CATEGORIES } from './menu.js';
 import { config } from './config.js';
@@ -167,9 +164,14 @@ export async function processSubmission(sub, ctx = {}) {
 
   if (live) {
     const { fetchDriveFile } = await import('./sheets.js');
-    const { analyzeImage, analyzeVideo } = await import('./ai.js');
+    const { analyzeImage } = await import('./ai.js');
     for (const k of ITEMS) {
       if (k === 'fruit_milk' && !wantFruitMilk) continue;
+      // Video is still collected from schools (deterrence) but no longer
+      // AI-analysed — removes ~65–70% of the AI bill. Its upload is still
+      // required: the completeness check in flagRules keys off files[k].missing,
+      // which stays false whenever a fileId is present.
+      if (k === 'serving_video') continue;
       const f = sub.files[k];
       if (!f || f.missing || !f.fileId) continue;
       try {
@@ -177,14 +179,7 @@ export async function processSubmission(sub, ctx = {}) {
         f.hash = crypto.createHash('sha256').update(buf).digest('hex');
         markDuplicate(f, sub, k, ctx.seenHashes);
         const stage = ITEM_STAGE[k];
-        if (k === 'serving_video') {
-          const tmp = path.join(os.tmpdir(), `mdm-${f.hash.slice(0, 12)}.mp4`);
-          fs.writeFileSync(tmp, buf);
-          try { f.ai = normalizeReading(stage, await analyzeVideo(tmp, { menuItems: menu })); }
-          finally { fs.rmSync(tmp, { force: true }); }
-        } else {
-          f.ai = normalizeReading(stage, await analyzeImage(buf, { stage, menuItems: menu }));
-        }
+        f.ai = normalizeReading(stage, await analyzeImage(buf, { stage, menuItems: menu }));
       } catch (e) {
         f.error = e.message; // keep going; a fetch/AI failure shouldn't drop the row
       }
